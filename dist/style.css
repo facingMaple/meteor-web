@@ -37,7 +37,6 @@ dialog{background:#111a1e;color:var(--paper);border:1px solid #8f785950;padding:
 #hit-feedback[data-kind="guard"]{color:#b4c8d0;font-size:19px}#hit-feedback[data-kind="knockdown"]{color:#f0d2a0;font-size:27px;letter-spacing:2px}
 @media(max-width:520px){.combo-weapon-filter{display:flex;flex-wrap:wrap;gap:8px}.combo-weapon-filter button{flex:1 0 70px}.combo-legend{padding:12px;font-size:12px}.combo-group h4{align-items:flex-start;flex-direction:column;gap:3px}.combo-move-list>li{grid-template-columns:minmax(0,1fr);gap:7px;padding:14px 0}.combo-move-title>strong{font-size:14px}.combo-command{text-align:left;max-width:100%}.combo-command kbd{min-width:26px;min-height:28px;margin-left:0;margin-right:5px}.combo-move-list li>p{font-size:12px}.guide-controls .controls-grid{grid-template-columns:1fr}.guide-controls .control-row{font-size:12px}#combo-feedback.named-move{font-size:19px;right:6%;top:36%;max-width:45%}#combo-feedback.named-move::after{font-size:11px;letter-spacing:1px}}
 
-.featured-emilia .featured-seal{background:#65568040;color:#e9e0f5}
 .featured-doubao .featured-seal{background:#6a777245;color:#d2e0d8}
 .featured-springfield .featured-seal{background:#61594455;color:#ead9ae}
 

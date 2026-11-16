@@ -43,20 +43,6 @@
 胡桃模型内嵌说明要求非商业、不可二次配布。本次转换仅供用户本机使用，未上传或更新线上站点。原MMD物理、表情、sphere/toon着色与《流星》动作的材质及骨架适配有差异。
 
 
-## YS-影本地外观（2026-10-28）
-
-`enhanced/raiden/` 来自用户提供的「礼服影.pmx」及配套贴图。原24,203顶点、30,604三角面完整保留，27材质、7张源颜色图（6张2K、1张1K），沿用原p0骨架与游戏动作。肌肤贴花保留原透明裁切。
-
-原readme署名：头部 miHoYo／ota／ash.k／manashiku；身体 miHoYo／观海子；改模 花咲十七夜。原说明注明非商业、不可二次配布。本次只读原包，转换结果保存在本机，未上传。模型内的MMD物理与表情尚未接入；完整来源与检查见本地`work/raiden-pmx-quality/`及`work/raiden-pmx-model/`。
-
-
-## RE0-爱蜜莉雅本地外观（2026-10-29）
-
-`enhanced/emilia/` 来自用户提供的「Emilia_v1.pmx」。源16,493顶点、23,854三角；运行14,236三角、8材质。原SHADING的9,618面与Cloth+Skin的位置、UV和权重一致，已将SDW透明阴影图合成至CLOTH，避免重合表面闪烁；完整Face、Cloth、Skin及其他实际表面保留。4张运行颜色图由5张源PNG转换，原FACE/HAIR/ACCS内容保留。
-
-原包内嵌署名为 Skymoons／Elemental Craft／Kadokawa corp／chenxs（陈心舒），没有明示使用许可。署名与原说明保存在本地工作目录。本次是用户指定本地模型的离线转换，未上传站点。MMD物理、表情与完整手指尚未接入，头发与衣袖采用简化骨骼适配。
-
-
 ## 2026-11-06 关卡扩展复用
 
 决死阵 sn09 与飞鹏堡 sn15 复用本地原地图 GMB/DES/WP、cmodel/FMC、Level/NPC PST、人物与兵器资源，没有下载或生成替代模型。脚本道具身份与数值来自已导出的 Meteor.res type2/id4、id14。两关配乐选用本地原 s1.mp3 / s2.mp3，具体曲目对应关系为 Web 选择，未声称由 EXE 恢复。

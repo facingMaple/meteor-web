@@ -81,7 +81,7 @@ npm run dev
 
 ## 打包本地游戏
 
-执行 `npm run package`（打包时需要 Python 3），生成 `artifacts/meteor-web-v<版本>.zip`。压缩包包含整个 `dist/`、本地服务器和启动文件，YS-胡桃、YS-影、RE0-爱蜜莉雅、豆包、春田的转换网格和原贴图会一同打入。打包不依赖 Git 是否暂存这些资源。
+执行 `npm run package`（打包时需要 Python 3），生成 `artifacts/meteor-web-v<版本>.zip`。压缩包包含整个 `dist/`、本地服务器和启动文件，各精选人物的转换网格和原贴图会一同打入。打包不依赖 Git 是否暂存这些资源。
 
 打包后自动校验包内文件哈希、模块导入和五个导入人物的网格/贴图引用，并生成 `.verification.json` 与 `.zip.sha256`。完整解压后可双击「启动游戏.command」或运行 `npm start`。游戏运行无需原始 PMX、Blender 或 Downloads 目录；角色运行资源已保存在项目内的 `dist/assets/enhanced/`。
 
@@ -178,9 +178,7 @@ npm run dev
 
 胡桃采用用户提供的完整「胡桃喵1.0.pmx」及5张2K原贴图。保留完整脸、眼睛、猫耳和服装；由原版30骨架与动作驱动，剧情仍是原角色身份。原黑丝4K GIMI MOD缺脸且UV不同，没有拼接混贴。发尾已接入独立 Web 弹簧骨骼；衣摆、手指和面部表情仍为简化适配，未实现原MMD物理或原神着色系统。
 
-YS-影使用完整「礼服影.pmx」与7张原颜色贴图，全部30,604三角面保留。Blender源：`work/raiden-pmx-model/雷神影-礼服模型-流星动作适配.blend`。长发已接入独立 Web 弹簧骨骼；礼服物理尚未实现，大幅动作仍可能局部变形或穿插。
 
-RE0-爱蜜莉雅采用「Emilia_v1.pmx」，完整脸与衣装保留，重复透明阴影层合成进贴图后移除重叠pass。Blender源：`work/emilia-pmx-model/爱蜜莉雅-完整模型-流星动作适配.blend`，含待机、跑步、跳跃局部姿势、攻击四段动作。原包署名 Skymoons／Elemental Craft／Kadokawa corp／chenxs（陈心舒），保存在本地来源记录中。
 
 豆包采用项目内归档的完整PMX和原4K JPEG贴图，保留107,855顶点、180,698三角面及原始身材。已修正旧适配将躯干拉宽约37%、头部缩小约9%的问题：网格只做等比变换，独立30根显示身体骨骼跟随原动作，9根发骨轻微摆动；原战斗骨架与挂点不变，显示武器跟随源手掌。裙摆与腋下只修正权重，不再改变原表面。工坊可查看「原模型姿态」。版权归属《豆包》，建模sdn1111，绑定鹿铃，原署名和4K图保留。运行资源在 `dist/assets/enhanced/doubao/`，完整源归档在 `assets/source/doubao/`，更新后的编辑文件仍为 `work/doubao-import-2026-11-10/豆包-完整人物-流星动作适配.blend`；运行与重建均不需要下载目录。见[原比例修正记录](work/doubao-proportions-2026-11-10/README.md)。
 
@@ -192,7 +190,7 @@ Blender编辑源：`work/hutao-pmx-model/胡桃喵-完整模型-流星动作适�
 
 带发束骨骼的 Blender 文件在 `work/hair-physics-2026-11-10/`，Web 中运行物理，Blender 文件保留可编辑骨骼和权重。重建时，先运行原 `build_*_pmx.py`（需要原下载目录），再运行 `/Applications/Blender.app/Contents/MacOS/Blender --background --python scripts/blender/add_hair_springs.py`；只重建头发不需要已清理的下载目录。详细复现与验证见[头发物理记录](work/hair-physics-2026-11-10/README.md)。
 
-人物显示名使用「YS-胡桃」「YS-影」「RE0-爱蜜莉雅」，原 PMX、Blender 和历史报告文件名保留实际名称。2026-11-06 已修正全局替换误改的路径并更新当前哈希，原校验快照另行归档；见[改名修正记录](work/appearance-name-fix-2026-11-06/README.md)。
+人物显示名可与源文件名不同，例如「YS-胡桃」对应「胡桃喵1.0.pmx」。2026-11-06 已修正全局替换误改的路径并更新当前哈希，原校验快照另行归档；见[改名修正记录](work/appearance-name-fix-2026-11-06/README.md)。
 
 胡桃模型内嵌说明署名 miHoYo／观海，目录署名摸鱼大水怪，并注明非商业、不可二次配布；本轮模型转换仅在本机使用，未上传站点。完整来源、转换与验收记录见 `work/hutao-pmx/`。
 
@@ -233,7 +231,7 @@ Blender编辑源：`work/hutao-pmx-model/胡桃喵-完整模型-流星动作适�
 
 2026-10-30 历史本地 v0.5.1：**207/207 测试通过**（30.57 秒），19 个运行模块语法与源代码 whitespace 检查通过，原资源 3,858 条核验无异常。包含受击 / 击倒 / 起身、快速连点、局部命中停顿、炎硫岛险地与原有外观 / 连招 / 任务回归。浏览器普通按键已验证原版角色击倒冷燕后起身继续战斗，未修改隐藏游戏状态；不代表完整人工通关。见[最终全套 TAP](work/meteor-original/evidence/native-runtime-hit-reaction-final-2026-10-30.tap)、[当前验证](work/meteor-original/evidence/E-validation-current.json)和[实机记录](work/meteor-original/evidence/E-hit-reaction-browser-2026-10-30.json)。
 
-2026-10-29 外观阶段 v0.5：**190/190 测试通过**（30.58 秒），18 个运行模块语法与源代码 whitespace 检查通过。新增RE0-爱蜜莉雅完整资源、五外观切换与真实衣物接缝回归，保留此前全部连招/任务检查。见[历史全套 TAP](work/emilia-pmx/evidence/full-tests.tap)、[验证快照](work/emilia-pmx/evidence/validation.json)和[模型接入报告](work/emilia-pmx/report/2026-10-29_模型转换-爱蜜莉雅-report.md)。
+2026-10-29 外观阶段 v0.5：**190/190 测试通过**（30.58 秒），18 个运行模块语法与源代码 whitespace 检查通过。新增RE0-爱蜜莉雅完整资源、五外观切换与真实衣物接缝回归，保留此前全部连招/任务检查。见[历史全套 TAP](work/emilia-pmx/evidence/full-tests.tap)、[验证快照](work/emilia-pmx/evidence/validation.json)和[模型接入报告](work/emilia-pmx/report/2026-10-29_模型转换-爱蜜莉雅-report.md)。（其中 YS-影、RE0-爱蜜莉雅 与 TDA 弱音 已于 2026-11-16 下线）
 
 ```sh
 npm test

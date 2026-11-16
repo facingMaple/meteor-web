@@ -75,11 +75,15 @@ test('Doubao appears in game/workshop and switching five surfaces preserves pose
     actor.group.position.set(2,3,-4);actor.group.rotation.y=.7;actor.setPoseFrame(0,data.poses[262].start+3.5);
     const attachment=actor.getAttachment('d_wpnR'),weapon=new THREE.Group();attachment.add(weapon);actor.group.updateMatrixWorld(true);
     const native=actor.skeleton,pose=matrices(actor),weaponTransform=weapon.matrixWorld.toArray(),frame=actor.frame,meshes=new Map();
-    for(const appearance of ['original','hutao','raiden','emilia','doubao','original','doubao']){
+    for(const appearance of ['original','hutao','ganyu','springfield','doubao','original','doubao']){
       const status=await actor.setAppearance(appearance);assert.equal(status.available,true);assert.equal(status.appearance,appearance);
       if(meshes.has(appearance))assert.equal(actor.mesh===meshes.get(appearance),true);else meshes.set(appearance,actor.mesh);
       assert.equal(actor.skeleton===native,true);assert.equal(actor.skeleton.bones.length,30);
-      assert.equal(actor.mesh.skeleton.bones.slice(0,30).every((b,i)=>b===actor.bones[i]),appearance!=='doubao');
+      // Only 胡桃 still shares the native bone nodes; every other bundle ships its own
+      // source-proportions display rig, so its first 30 bones are that rig's.
+      const usesNativeBones = appearance === 'original' || appearance === 'hutao';
+      assert.equal(actor.mesh.skeleton.bones.slice(0,30).every((b,i)=>b===actor.bones[i]),usesNativeBones);
+      assert.ok(actor.mesh.skeleton.bones.length>=30);
       assert.deepEqual(matrices(actor),pose);assert.equal(actor.frame,frame);assert.deepEqual(weapon.matrixWorld.toArray(),weaponTransform);
       assert.equal(actor.getAttachment('d_wpnR')===attachment,true);assert.equal(actor.nativeSpace.children.filter(o=>o.isSkinnedMesh).length,1);
     }
@@ -130,7 +134,7 @@ test('Doubao hair uses restrained springs and retains the disabled setting throu
     }
     const motion=actor.getSecondaryMotionSnapshot().reduce((sum,n)=>sum+new THREE.Vector3().fromArray(n.tail).distanceToSquared(new THREE.Vector3().fromArray(n.previous)),0);
     assert.ok(motion<1e-7,'short hair settles instead of whipping after motion stops');
-    actor.setSecondaryMotionEnabled(false);await actor.setAppearance('emilia');await actor.setAppearance('doubao');assert.equal(actor.secondaryMotionStatus.enabled,false);
+    actor.setSecondaryMotionEnabled(false);await actor.setAppearance('springfield');await actor.setAppearance('doubao');assert.equal(actor.secondaryMotionStatus.enabled,false);
     actor.setSecondaryMotionEnabled(true);assert.equal(actor.secondaryMotionStatus.enabled,true);
   }finally{actor.dispose();}
 }));
@@ -191,8 +195,8 @@ test('a missing Doubao bundle preserves the live model and rejects incompatible 
   globalThis.fetch=async url=>new URL(url).pathname.includes('/enhanced/doubao/')?new Response('',{status:404}):fileFetch(url);
   const actor=module.createNativeCharacter(data,{loadTextures:false});
   try{
-    await actor.setAppearance('emilia');const mesh=actor.mesh,status=await actor.setAppearance('doubao');
-    assert.equal(status.available,false);assert.equal(actor.mesh===mesh,true);assert.equal(status.appearance,'emilia');assert.match(status.reason,/404/);
+    await actor.setAppearance('hutao');const mesh=actor.mesh,status=await actor.setAppearance('doubao');
+    assert.equal(status.available,false);assert.equal(actor.mesh===mesh,true);assert.equal(status.appearance,'hutao');assert.match(status.reason,/404/);
     const other=module.createNativeCharacter(await module.loadNativeCharacterData(1),{loadTextures:false});
     try{const result=await other.setAppearance('doubao');assert.equal(result.available,false);assert.equal(other.appearance,'original');}finally{other.dispose();}
   }finally{actor.dispose();globalThis.fetch=before;}

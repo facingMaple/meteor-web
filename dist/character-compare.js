@@ -8,7 +8,7 @@ const $ = selector => document.querySelector(selector);
 const canvas = $('#compare-world'), stage = canvas.parentElement;
 const requestedAppearance = new URL(location.href).searchParams.get('appearance');
 const initialAppearance = WORKSHOP_APPEARANCES.includes(requestedAppearance) ? requestedAppearance : DEFAULT_CHARACTER_APPEARANCE;
-const referenceAppearance = appearance => appearance === 'hutao' ? 'raiden' : 'hutao';
+const referenceAppearance = appearance => appearance === 'hutao' ? 'doubao' : 'hutao';
 $('#compare-appearance').replaceChildren(...WORKSHOP_APPEARANCES.map(id => { const option = document.createElement('option'); option.value = id; option.textContent = appearanceDetails(id).title; return option; }));
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
 const state = { appearance: initialAppearance, complete: true, motion: 'idle', playing: false, physics:true, time: 0, angle: .1, pitch: .1, distance: 6.2, focus: 1.45, view: 'full', ready: false };

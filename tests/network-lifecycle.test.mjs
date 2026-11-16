@@ -52,10 +52,10 @@ test('cancelled fighter creation disposes late assets and never installs gamepla
   const game={hero:{},enemies:[],scene:new THREE.Scene(),action,pause(){},setInfiniteRage(){},_disposeNameplate(){},_nameplate(){},_placeFighter(){placed++;},
     projectiles:{clear(reason){cleared.push(['dart',reason]);}},muskets:{clear(){cleared.push(['musket']);}},wheels:{clear(){cleared.push(['wheel']);}},
     async _equip(){if(++equips===2){entered.resolve();await equip.promise;}},async _createFighter(...args){selected=args;return peer;}};
-  const selectionRoom=room();selectionRoom.players[1].selection={character:0,characterAppearance:'raiden'};
+  const selectionRoom=room();selectionRoom.players[1].selection={character:0,characterAppearance:'hutao'};
   const creating=NetworkGame.create(game,{playerId:'host',host:true},selectionRoom,{isCurrent:()=>current});await entered.promise;
   assert.deepEqual(cleared,[['dart','network-start'],['musket'],['wheel']],'新联机不能携带上一场本地投射物');
-  assert.deepEqual(selected,[0,undefined,false,null,'raiden']);
+  assert.deepEqual(selected,[0,undefined,false,null,'hutao']);
   assert.equal(peer.root.parent,game.scene);current=false;equip.resolve();assert.equal(await creating,null);
   assert.equal(disposed,1);assert.equal(placed,0);assert.equal(peer.root.parent,null);assert.deepEqual(game.enemies,[]);assert.equal(game.action,action);
 });

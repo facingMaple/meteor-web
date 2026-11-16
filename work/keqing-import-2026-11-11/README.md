@@ -41,7 +41,7 @@
 - 显示骨架关节位置误差：**0**；长度变化的骨段：**无**
 - 源包围盒 == 运行时包围盒（逐轴完全相同）；5 个截面宽/厚变化均 **0.0000%**
 
-落地（这次单独测了）：`meshFloor = soleFloor = 0.0098`，`geometryBelowSole = 0`。游戏内实测鞋底世界高度 **−0.8288**，与荧、芙宁娜、王昭君（修正后）完全一致。
+落地（这次单独测了）：`meshFloor = soleFloor = 0.0098`，`geometryBelowSole = 0`。游戏内实测鞋底世界高度 **−0.8288**，与荧、芙宁娜完全一致。
 
 对照图：[source-vs-current.png](../keqing-proportions-2026-11-11/source-vs-current.png)、[侧面](../keqing-proportions-2026-11-11/source-vs-current-side.png)
 

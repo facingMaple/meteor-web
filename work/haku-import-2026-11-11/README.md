@@ -48,7 +48,7 @@
 
 - 逐顶点最大偏差：**8.43 × 10⁻⁸**；骨架误差 **0**；长度变化骨段 **无**
 - 源包围盒 == 运行时包围盒（逐轴完全相同）；4 个截面宽/厚变化均 **0.0000%**
-- 落地：`meshFloor = soleFloor = −0.0065`，`geometryBelowSole = 0`；实测鞋底世界高度 **−0.8288**，与荧、芙宁娜、王昭君、刻晴一致
+- 落地：`meshFloor = soleFloor = −0.0065`，`geometryBelowSole = 0`；实测鞋底世界高度 **−0.8288**，与荧、芙宁娜、刻晴一致
 
 对照图：[source-vs-current.png](../haku-proportions-2026-11-11/source-vs-current.png)、[侧面](../haku-proportions-2026-11-11/source-vs-current-side.png)
 

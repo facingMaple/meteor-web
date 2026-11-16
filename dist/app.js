@@ -18,24 +18,25 @@ import { DEFAULT_CHARACTER_APPEARANCE, NATIVE_CHARACTERS, NATIVE_APPEARANCES } f
 import { appearanceDetails, appearanceCharacterName, appearanceCharacterSeal, battleCharacterSelection, savedBattleCharacterSelection } from './character-appearances.js';
 import { NATIVE_MISSIONS, getNativeMission } from './native-missions.js';
 import { NATIVE_WEAPON_MENU, QIANKUN_MODE_NAMES } from './native-weapon-menu.js';
+import { DEFAULT_NATIVE_WEAPON_APPEARANCES, NATIVE_WEAPON_APPEARANCES, nativeWeaponAppearance, nativeWeaponAppearanceName, normalizeNativeWeaponAppearances } from './native-weapon-appearances.js';
 import { renderNativeMoveGuide } from './native-move-guide.js';
 import { QIYUN_MAP } from './qiyun-map.js';
 import { TRAINING_ENEMY_COUNT, trainingEnemyCount } from './training-settings.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
-const swordStyleNames={original:'原版长剑',butterfly:'月蝶剑',raiden:'雷电影佩刀'};
 const maps={sifang:{name:'四方阵',english:'THE FOUR SQUARES',poem:'方寸之间，自有天地。'},cave:{name:'钟乳洞',english:'LIMESTONE CAVERN',poem:'暗流无声，剑影初现。'},forge:{name:'炼铁狱',english:'THE IRON FORGE',poem:'烈火淬刃，百炼成锋。'}};
 maps[QIYUN_MAP.id] = QIYUN_MAP;
 for(const mission of NATIVE_MISSIONS)maps[mission.mapId]={name:mission.name,english:'ORIGINAL MISSION · '+mission.id.toUpperCase(),poem:'原版单机任务'};
 const weapons=NATIVE_WEAPON_MENU;
-let prefs={showFps:false,weapon:'sword',map:QIYUN_MAP.id,character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',mission:'sn01',completedMissions:[],difficulty:'normal',enemyCount:TRAINING_ENEMY_COUNT.defaultValue,infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
-try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');for(const k of ['showFps','weapon','character','characterAppearance','characterSelected','swordStyle','spearStyle','mission','completedMissions','difficulty','enemyCount','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];}catch{}
+let prefs={showFps:false,weapon:'sword',map:QIYUN_MAP.id,character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',weaponAppearances:{...DEFAULT_NATIVE_WEAPON_APPEARANCES},mission:'sn01',completedMissions:[],difficulty:'normal',enemyCount:TRAINING_ENEMY_COUNT.defaultValue,infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
+let hasSavedWeaponAppearances=false;
+try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');hasSavedWeaponAppearances=!!p.weaponAppearances&&typeof p.weaponAppearances==='object';for(const k of ['showFps','weapon','character','characterAppearance','characterSelected','swordStyle','spearStyle','weaponAppearances','mission','completedMissions','difficulty','enemyCount','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];}catch{}
 
-if(!weapons[prefs.weapon])prefs.weapon='sword';if(!['normal','hard'].includes(prefs.difficulty))prefs.difficulty='normal';if(!['low','high'].includes(prefs.quality))prefs.quality='high';
+if(typeof prefs.weapon !== 'string' || !Object.hasOwn(weapons,prefs.weapon))prefs.weapon='sword';if(!['normal','hard'].includes(prefs.difficulty))prefs.difficulty='normal';if(!['low','high'].includes(prefs.quality))prefs.quality='high';
 Object.assign(prefs, savedBattleCharacterSelection(prefs));
-if(!Object.hasOwn(swordStyleNames,prefs.swordStyle))prefs.swordStyle='butterfly';
-if(!['original','phoenix'].includes(prefs.spearStyle))prefs.spearStyle='original';
+prefs.weaponAppearances=normalizeNativeWeaponAppearances(hasSavedWeaponAppearances?prefs.weaponAppearances:null,{sword:prefs.swordStyle,spear:prefs.spearStyle});
+prefs.swordStyle=prefs.weaponAppearances.sword;prefs.spearStyle=prefs.weaponAppearances.spear;
 prefs.infiniteRage=prefs.infiniteRage===true;
 prefs.enemyCount = trainingEnemyCount(prefs.enemyCount);
 const appearanceURL = new URL(location.href);
@@ -47,7 +48,7 @@ if (linkedAppearance !== null) {
   appearanceURL.searchParams.delete('appearance');
   history.replaceState(null, '', appearanceURL.pathname + appearanceURL.search + appearanceURL.hash);
 }
-const save=()=>{try{const {map, ...savedPrefs}=prefs; localStorage.setItem('meteor-web-original-v2',JSON.stringify(savedPrefs));}catch{}};
+const save=()=>{prefs.swordStyle=prefs.weaponAppearances.sword;prefs.spearStyle=prefs.weaponAppearances.spear;try{const {map, ...savedPrefs}=prefs; localStorage.setItem('meteor-web-original-v2',JSON.stringify(savedPrefs));}catch{}};
 if(!getNativeMission(prefs.mission))prefs.mission='sn01';
 prefs.completedMissions=NATIVE_MISSIONS.filter(m=>Array.isArray(prefs.completedMissions)&&prefs.completedMissions.includes(m.id)).map(m=>m.id);
 let currentMode='training',currentMissionId=prefs.mission,currentLowBandwidth=false;
@@ -76,9 +77,12 @@ function updateLoadoutPreview() {
     portrait.hidden = true;
     portrait.removeAttribute('src');
   }
-  $('#weapon-preview-title').textContent = prefs.weapon === 'sword' ? swordStyleNames[prefs.swordStyle] :
-    prefs.weapon === 'spear' && prefs.spearStyle === 'phoenix' ? '霜翎凤鸣枪' : weapons[prefs.weapon].sourceName;
+  $('#weapon-preview-title').textContent = nativeWeaponAppearanceName(prefs.weapon,prefs.weaponAppearances[prefs.weapon]);
   $('#weapon-preview-status').textContent = '选择「3D 查看」可载入模型';
+}
+
+function applyWeaponAppearancePreferences(instance){
+  for(const [weapon,appearance] of Object.entries(prefs.weaponAppearances))instance.setWeaponAppearance(weapon,appearance);
 }
 
 function releaseMenuSnapshots() {
@@ -209,17 +213,42 @@ function updateEnemyCount() {
   input.setAttribute('aria-valuetext', label);
   $('#training-enemy-value').value = label;
 }
+function updateWeaponAppearanceOptions(){
+  const group = $('#weapon-appearance-options');
+  const weapon = prefs.weapon;
+  if (group.dataset.appearanceWeapon !== weapon) {
+    group.dataset.appearanceWeapon = weapon;
+    $('#weapon-appearance-heading').textContent = `${weapons[weapon].name}外观`;
+    group.innerHTML = NATIVE_WEAPON_APPEARANCES[weapon].map(option => `
+      <button class="sword-style-card${option.festive ? ' weapon-skin-festive' : ''}" type="button"
+        data-weapon-appearance="${option.id}" aria-pressed="false">
+        <span class="sword-style-icon ${option.id}" aria-hidden="true">${option.glyph}</span>
+        <span class="sword-style-copy"><strong>${option.name}</strong><small>${option.detail}</small></span>
+        <span class="sword-style-status">选择</span>
+      </button>
+    `).join('');
+  }
+  for (const button of group.querySelectorAll('[data-weapon-appearance]')) {
+    const selected = button.dataset.weaponAppearance === prefs.weaponAppearances[weapon];
+    button.classList.toggle('selected', selected);
+    button.setAttribute('aria-pressed', String(selected));
+    button.querySelector('.sword-style-status').textContent = selected ? '已选' : '选择';
+  }
+}
+function chooseWeaponAppearance(weapon, appearance){
+  if (running || !nativeWeaponAppearance(weapon, appearance)) return;
+  prefs.weaponAppearances[weapon] = appearance;
+  save();
+  updateSelection();
+}
 function updateSelection(){
   updateEnemyCount();
   $('#infinite-rage').checked=prefs.infiniteRage;
   $('#infinite-rage-status').textContent=prefs.infiniteRage?'已开启':'已关闭';
   $$('.arena-card').forEach(el=>{const selected=canonicalMap(el.dataset.map)===canonicalMap(prefs.map);el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});
   $$('[data-weapon]').forEach(el=>{const selected=el.dataset.weapon===prefs.weapon;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});
-  $$('[data-sword-style]').forEach(el=>{const selected=el.dataset.swordStyle===prefs.swordStyle;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));el.querySelector('.sword-style-status').textContent=selected?'已选':'选择';});
-  $$('[data-spear-style]').forEach(el=>{const selected=el.dataset.spearStyle===prefs.spearStyle;el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));el.querySelector('.sword-style-status').textContent=selected?'已选':'选择';});
-  $('#sword-appearance-section').hidden=prefs.weapon!=='sword';
-  $('#spear-appearance-section').hidden=prefs.weapon!=='spear';
-  $('#sword-wardrobe-current').textContent=prefs.weapon==='sword'?'演武装备 · '+swordStyleNames[prefs.swordStyle]:'演武装备 · '+(prefs.weapon==='spear'?(prefs.spearStyle==='phoenix'?'霜翎凤鸣枪':'原版长枪'):weapons[prefs.weapon].name);
+  updateWeaponAppearanceOptions();
+  $('#sword-wardrobe-current').textContent='演武装备 · '+nativeWeaponAppearanceName(prefs.weapon,prefs.weaponAppearances[prefs.weapon]);
   $('#difficulty-label').textContent=prefs.difficulty==='hard'?'江湖高手':'江湖新手';
   if(lobbyPage!=='home')displayScenery(canonicalMap(prefs.map));
   $('#scene-name').textContent=maps[prefs.map].name;$('#scene-english').textContent=maps[prefs.map].english;$('#scene-poem').textContent=maps[prefs.map].poem;
@@ -299,16 +328,15 @@ async function openModelViewer(kind){
   const canvas = $('#model-viewer-canvas'), status = $('#viewer-status');
   const active = () => canvas.isConnected && modal.open && !running && !loadingMatch && modalKind === 'model-viewer';
   const selection = battleCharacterSelection(prefs);
-  const { weapon, swordStyle, spearStyle } = prefs;
-  const key = [selection.character, selection.characterAppearance, weapon, swordStyle, spearStyle].join(':');
+  const { weapon } = prefs, weaponAppearance=prefs.weaponAppearances[weapon];
+  const key = [selection.character, selection.characterAppearance, weapon, weaponAppearance].join(':');
   status.textContent = '正在载入所选模型…';
   try {
     const [engine, { MenuSnapshots }, { mountModelViewer }] = await Promise.all([
       ensureGame(), import('./menu-snapshots.js'), import('./model-viewer.js')
     ]);
     if (!active()) return;
-    engine.setSwordStyle(swordStyle);
-    engine.setSpearStyle(spearStyle);
+    applyWeaponAppearancePreferences(engine);
     await engine.setWeapon(weapon);
     if (!active()) return;
     await engine.setCharacter(selection.character, selection.characterAppearance);
@@ -391,8 +419,7 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
     if (!isCurrent()) return;
     if (canLock && navigator.userActivation?.isActive) instance.requestMouseLock();
     instance.frameMeter?.reset();
-    instance.setSwordStyle(prefs.swordStyle);
-    instance.setSpearStyle(prefs.spearStyle);
+    applyWeaponAppearancePreferences(instance);
     instance.setInfiniteRage(currentMode === 'training' && prefs.infiniteRage);
     if (!isCurrent()) return;
     $('#page-content').replaceChildren();
@@ -452,7 +479,7 @@ function updateHUD(s){if(!running)return;
   $('#hp-bar').style.width=Math.max(0,Math.min(100,s.hp/s.maxHp*100))+'%';$('#hp-label').textContent=`${Math.ceil(s.hp)} / ${s.maxHp}`;if($('#stamina-bar'))$('#stamina-bar').style.width=Math.max(0,Math.min(100,s.stamina||0))+'%';$('#rage-bar').style.width=Math.max(0,Math.min(100,s.rage))+'%';$('#rage-mode-label').hidden=!s.infiniteRage;
   const rules=currentMode==='network'?networkLobby?.session?.rules:null;if(rules){const title=NETWORK_MODES[rules.mode]+' · '+(rules.mode==='leader'?rules.scoreLimit+'杀获胜':'全灭对方获胜');if($('#hud-map').textContent!==title)$('#hud-map').textContent=title;}
   const time=Math.max(0,Math.ceil(rules?rules.timeLimit-s.time:s.time));$('#timer').textContent=String(Math.floor(time/60)).padStart(2,'0')+':'+String(time%60).padStart(2,'0');$('#kills').textContent=currentMode==='network'?s.kills??0:s.hits??s.kills??0;const counterLabel=$('#battle-counter-label');if(counterLabel)counterLabel.textContent=currentMode==='network'?'击败':'命中';$('#deaths').textContent=s.deaths;
-  if(s.weaponName){$('#hud-weapon').textContent=s.weaponName+(s.weapon==='qiankun'?' · '+QIANKUN_MODE_NAMES[s.weaponMode]:'')+(s.weapon2Name?' / 副兵器：'+s.weapon2Name:' / 副兵器：空')+(weapons[s.weapon]?' · '+weapons[s.weapon].name:s.weapon==='dart'?' · 飞镖':'');}
+  if(s.weaponName){const skin=s.weaponAppearance&&s.weaponAppearance!=='original'?' · '+nativeWeaponAppearanceName(s.weapon,s.weaponAppearance):'';$('#hud-weapon').textContent=s.weaponName+skin+(s.weapon==='qiankun'?' · '+QIANKUN_MODE_NAMES[s.weaponMode]:'')+(s.weapon2Name?' / 副兵器：'+s.weapon2Name:' / 副兵器：空')+(weapons[s.weapon]?' · '+weapons[s.weapon].name:s.weapon==='dart'?' · 飞镖':'');}
   else if(s.weapon&&weapons[s.weapon]){$('#hud-weapon').textContent=weapons[s.weapon].name+' · '+weapons[s.weapon].motto;}
   $('#enemy-status').classList.toggle('hidden',!s.enemy);if(s.enemy){$('#enemy-name').textContent=(s.locked?'已锁定 · ':'附近 · ')+s.enemy.name;$('#enemy-bar').style.width=Math.max(0,s.enemy.hp/s.enemy.maxHp*100)+'%';$('#enemy-hp').textContent=Math.ceil(s.enemy.hp)+' / '+s.enemy.maxHp+' · '+({hit:'受击',guard:'格挡',down:'倒地',recover:'起身'}[s.enemy.reaction]||(Number.isFinite(s.enemy.distance)?'距离 '+Math.round(s.enemy.distance):''));}
   $('#mission-goal').classList.toggle('hidden',currentMode!=='story');if(currentMode==='story'){const mission=getNativeMission(currentMissionId),objective=s.mission?.objective;$('#mission-goal').textContent=mission.objective+(mission.objectiveType==='eliminate'?' · 剩余 '+(s.enemies?.length??0)+' 人':objective?.targetHp!=null?' · '+(objective.targetName||mission.protectName||mission.vipName)+' '+Math.ceil(objective.targetHp)+' / '+objective.targetMaxHp:'');}
@@ -493,8 +520,7 @@ document.addEventListener('click',e=>{
   const sound=e.target.closest('.sound-toggle');if(sound){toggleSound();return;}
   const guideChoice=e.target.closest('[data-guide-weapon]');if(guideChoice&&(modalKind==='guide'||!running&&lobbyPage==='guide')&&weapons[guideChoice.dataset.guideWeapon]){guideWeapon=guideChoice.dataset.guideWeapon;$$('[data-guide-weapon]').forEach(button=>{const selected=button.dataset.guideWeapon===guideWeapon;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});$('#guide-move-panel').innerHTML=renderNativeMoveGuide(guideWeapon);return;}
   const map=e.target.closest('[data-map]');if(map&&!running){selectMap(map.dataset.map);return;}
-  const spearStyle=e.target.closest('[data-spear-style]');if(spearStyle&&!running&&['original','phoenix'].includes(spearStyle.dataset.spearStyle)){prefs.spearStyle=spearStyle.dataset.spearStyle;prefs.weapon='spear';selectMenuWeapon('spear');return;}
-  const swordStyle=e.target.closest('[data-sword-style]');if(swordStyle&&!running&&Object.hasOwn(swordStyleNames,swordStyle.dataset.swordStyle)){prefs.swordStyle=swordStyle.dataset.swordStyle;prefs.weapon='sword';selectMenuWeapon('sword');return;}
+  const weaponAppearance=e.target.closest('[data-weapon-appearance]');if(weaponAppearance){chooseWeaponAppearance(prefs.weapon,weaponAppearance.dataset.weaponAppearance);return;}
   const weapon=e.target.closest('[data-weapon]');if(weapon){selectMenuWeapon(weapon.dataset.weapon);if(modal.open&&modalKind==='weapons')openModal('weapons');return;}
   const character=e.target.closest('[data-pick-character], [data-pick-appearance]');if(character){const appearance=character.dataset.pickAppearance||'original',id=character.dataset.pickCharacter===undefined?0:Number(character.dataset.pickCharacter);selectCharacter(id,appearance);return;}
   const nav=e.target.closest('[data-panel]');if(nav){if(nav.dataset.panel==='home'){if(modal.open)closeModal();}else openModal(nav.dataset.panel);return;}
@@ -513,7 +539,7 @@ document.addEventListener('keydown',e=>{if(e.key!=='Escape'||modal.open||loading
 document.addEventListener('input',e=>{if(e.target.id==='map-search'){const query=e.target.value.trim().toLowerCase();$$('.original-map-option').forEach(button=>button.hidden=!button.textContent.toLowerCase().includes(query));}});
 document.addEventListener('visibilitychange',()=>{if(document.hidden&&running&&!paused&&!loadingMatch)openModal('pause');syncMusic();});
 window.addEventListener('blur',()=>{if(running&&!paused&&!loadingMatch)openModal('pause');});
-document.addEventListener('change',e=>{if(e.target.id==='show-fps'){prefs.showFps=e.target.checked;game?.frameOverlay?.setVisible(prefs.showFps);save();return;}if(e.target.id==='infinite-rage'){prefs.infiniteRage=e.target.checked;game?.setInfiniteRage(currentMode==='training'&&prefs.infiniteRage);save();updateSelection();return;}if(e.target.id==='spear-style'){if(!['original','phoenix'].includes(e.target.value))return;prefs.spearStyle=e.target.value;save();updateSelection();return;}if(e.target.id==='sword-style'){if(!Object.hasOwn(swordStyleNames,e.target.value))return;prefs.swordStyle=e.target.value;save();updateSelection();return;}if(e.target.id==='quality'){prefs.quality=e.target.value;game?.setQuality(prefs.quality);save();}if(e.target.id==='character-appearance'){selectCharacter(0,e.target.value);return;}if(e.target.id==='difficulty'){prefs.difficulty=e.target.value;save();updateSelection();}});
+document.addEventListener('change',e=>{if(e.target.id==='show-fps'){prefs.showFps=e.target.checked;game?.frameOverlay?.setVisible(prefs.showFps);save();return;}if(e.target.id==='infinite-rage'){prefs.infiniteRage=e.target.checked;game?.setInfiniteRage(currentMode==='training'&&prefs.infiniteRage);save();updateSelection();return;}if(e.target.id==='quality'){prefs.quality=e.target.value;game?.setQuality(prefs.quality);save();}if(e.target.id==='character-appearance'){selectCharacter(0,e.target.value);return;}if(e.target.id==='difficulty'){prefs.difficulty=e.target.value;save();updateSelection();}});
 $('#appearance-toggle').addEventListener('click',()=>{const appearances=Object.keys(NATIVE_APPEARANCES).filter(id=>readyAppearances.has(id));selectCharacter(0,appearances[(appearances.indexOf(prefs.characterAppearance)+1)%appearances.length]);});
 
 $('#difficulty-toggle').addEventListener('click',()=>{prefs.difficulty=prefs.difficulty==='normal'?'hard':'normal';save();updateSelection();toast(prefs.difficulty==='hard'?'已切换：江湖高手':'已切换：江湖新手');});
@@ -521,7 +547,7 @@ $('#fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenEl
 $('#pickup-hint').addEventListener('click',()=>{game?.action('pickup');$('#world').focus();});
 $$('[data-action]').filter(button=>button.id!=='pickup-hint').forEach(button=>{let pressed=false;button.addEventListener('pointerdown',e=>{e.preventDefault();if(!running||paused||loadingMatch)return;pressed=true;button.setPointerCapture(e.pointerId);game.action(button.dataset.action,true);});for(const type of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(type,e=>{e.preventDefault();if(!pressed)return;pressed=false;if(type!=='pointerup'&&button.dataset.action==='jump')game?.action('clear',false);game?.action(button.dataset.action,false);});});
 
-networkLobby=new NetworkLobby({getGame:()=>game,getSelection:()=>battleCharacterSelection(prefs),onStart:(isCurrent,selection)=>startMatch('network',undefined,isCurrent,selection),onNotice:text=>toast(text),onResult:()=>openModal('network'),onStop:text=>{returnLobby();toast(text);}});
+networkLobby=new NetworkLobby({getGame:()=>game,getSelection:()=>({...battleCharacterSelection(prefs),weaponAppearances:prefs.weaponAppearances}),onStart:(isCurrent,selection)=>startMatch('network',undefined,isCurrent,selection),onNotice:text=>toast(text),onResult:()=>openModal('network'),onStop:text=>{returnLobby();toast(text);}});
 updateSelection();
 if (Object.hasOwn(NATIVE_APPEARANCES, linkedAppearance)) save();
 syncScenery();

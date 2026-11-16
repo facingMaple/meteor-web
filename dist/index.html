@@ -9,7 +9,7 @@
   <link rel="stylesheet" href="./style.css?v=20261116-training">
   <link rel="stylesheet" href="./keybindings.css">
   <link rel="stylesheet" href="./cold-ink.css">
-  <link rel="stylesheet" href="./game-shell.css?v=20261113-progress">
+  <link rel="stylesheet" href="./game-shell.css?v=20261116-wardrobe">
   <link rel="stylesheet" href="./disclaimer.css">
 </head>
 <body>
@@ -54,7 +54,7 @@
         </aside>
         <div class="home-hero"><div><div class="eyebrow">流星 · 蝴蝶 · 剑</div><h1 id="home-title">剑未入鞘<br>江湖未远</h1><p>执剑入场。</p><span class="ink-tag">浏览器武侠对战</span></div><div class="ink-landscape" aria-label="所选地图场景画卷"><div class="landscape-top"><span>江湖图鉴</span><span id="menu-map-state" role="status">当前战场</span></div><span class="landscape-inscription" aria-hidden="true">江湖</span><div class="landscape-caption"><span class="landscape-seal" aria-hidden="true">江湖</span><div><strong id="menu-map-name">栖云古庭</strong><small id="menu-map-poem">方寸之间，自有天地。</small></div><span class="landscape-coordinate" aria-hidden="true">山 / 水 / 剑</span></div><div class="scenery-controls" aria-label="首页背景轮换"><button data-scenery-action="previous" aria-label="上一张背景">‹</button><div class="scenery-dots"><button class="scenery-dot" data-scenery="qiyun" aria-label="展示栖云古庭背景" aria-pressed="false"><img src="./assets/menu/thumbs/qiyun.webp" alt="" loading="lazy"><span>栖云古庭</span></button><button class="scenery-dot" data-scenery="sn06" aria-label="展示四方阵背景" aria-pressed="false"><img src="./assets/menu/thumbs/sn06.webp" alt="" loading="lazy"><span>四方阵</span></button><button class="scenery-dot" data-scenery="sn01" aria-label="展示钟乳洞背景" aria-pressed="false"><img src="./assets/menu/thumbs/sn01.webp" alt="" loading="lazy"><span>钟乳洞</span></button><button class="scenery-dot" data-scenery="sn10" aria-label="展示炼铁狱背景" aria-pressed="false"><img src="./assets/menu/thumbs/sn10.webp" alt="" loading="lazy"><span>炼铁狱</span></button><button class="scenery-dot" data-scenery="sn14" aria-label="展示炎硫岛背景" aria-pressed="false"><img src="./assets/menu/thumbs/sn14.webp" alt="" loading="lazy"><span>炎硫岛</span></button></div><button data-scenery-action="next" aria-label="下一张背景">›</button><button data-scenery-action="pause" aria-label="暂停背景轮换" aria-pressed="false">Ⅱ</button></div></div></div>
         <div class="mode-grid"><button class="mode-card mode-primary" data-open="network"><span class="mode-emblem" aria-hidden="true"><svg><use href="#i-sword"/></svg></span><small>壹 / 与人交锋</small><strong>联机对战</strong><span>盟主 / 死斗 · 2–16 人</span><b>↗</b></button><button class="mode-card" data-open="mission"><span class="mode-emblem" aria-hidden="true"><svg><use href="#i-book"/></svg></span><small>贰 / 重走旧路</small><strong>单机任务</strong><span>重走江湖</span><b>→</b></button><button class="mode-card" data-route="prep"><span class="mode-emblem" aria-hidden="true"><svg><use href="#i-sword"/></svg></span><small>叁 / 磨砺招式</small><strong>自由演武</strong><span>自由练招</span><b>→</b></button></div>
-        <div class="home-bottom"><span id="home-loadout">琉潮-换装二 · 原版长剑</span><button class="secondary-button prep-entry-button" data-route="prep"><span class="prep-entry-mark" aria-hidden="true"><svg><use href="#i-sword"/></svg></span><span class="prep-entry-copy"><strong>战前整装</strong><small>切换人物 · 选择兵器</small></span><span class="prep-entry-arrow" aria-hidden="true">→</span></button><button class="guide-button" data-open="guide">操作指南</button><button id="active-room" class="secondary-button" data-open="network" hidden>返回我的房间</button></div>
+        <div class="home-bottom"><span id="home-loadout">琉潮-换装二 · 原版长剑</span><button class="secondary-button prep-entry-button" data-route="prep"><span class="prep-entry-mark" aria-hidden="true"><svg><use href="#i-sword"/></svg></span><span class="prep-entry-copy"><strong>战前整装</strong><small>切换人物 · 兵器与外观</small></span><span class="prep-entry-arrow" aria-hidden="true">→</span></button><button class="guide-button" data-open="guide">操作指南</button><button id="active-room" class="secondary-button" data-open="network" hidden>返回我的房间</button></div>
 
       </section>
       <section id="prep-page" class="lobby-page" hidden aria-labelledby="prep-title"><div class="page-heading"><div><div class="eyebrow">江湖 / 自由演武</div><h2 id="prep-title">战前整装</h2></div><span><button class="game-back" data-route="home">← 返回大厅</button></span></div>
@@ -74,20 +74,14 @@
         <div class="sword-wardrobe-heading"><div><span class="sword-wardrobe-kicker">WEAPON APPEARANCE</span><h2 id="sword-wardrobe-title">兵器与外观</h2><p><button class="guide-button" data-open="weapons">查看兵器谱 →</button></p></div><span class="sword-wardrobe-current" id="sword-wardrobe-current" aria-live="polite"></span></div>
         <figure class="weapon-preview" aria-label="当前兵器模型"><img id="weapon-preview-image" alt="" hidden><button class="model-inspect" data-model-view="weapon" aria-label="三维查看兵器">⤢ 3D 查看</button><figcaption><strong id="weapon-preview-title">兵器模型</strong><span id="weapon-preview-status" role="status">正在准备模型预览…</span></figcaption></figure>
         <div class="weapon-selector" role="group" aria-label="选择随身兵器"><div class="loadout"><span class="quiet-label">随身兵器</span><button data-weapon="sword" class="weapon-chip selected" aria-pressed="true">剑 <span>均衡</span></button><button data-weapon="blade" class="weapon-chip" aria-pressed="false">刀 <span>破势</span></button><button data-weapon="spear" class="weapon-chip" aria-pressed="false">枪 <span>远攻</span></button><button data-weapon="dagger" class="weapon-chip" aria-pressed="false">匕首 <span>疾攻</span></button><button data-weapon="dart" class="weapon-chip" aria-pressed="false">镖 <span>远射</span></button><button data-weapon="dual" class="weapon-chip" aria-pressed="false">双刺 <span>连击</span></button><button data-weapon="hammer" class="weapon-chip" aria-pressed="false">重锤 <span>重击</span></button><button data-weapon="musket" class="weapon-chip" aria-pressed="false">火铳 <span>射击</span></button><button data-weapon="wheel" class="weapon-chip" aria-pressed="false">飞轮 <span>回旋</span></button><button data-weapon="qiankun" class="weapon-chip" aria-pressed="false">乾坤刀 <span>三式</span></button><button data-weapon="knuckle" class="weapon-chip" aria-pressed="false">指虎 <span>短打</span></button><button data-weapon="ninja" class="weapon-chip" aria-pressed="false">忍刀 <span>刃脚</span></button></div></div>
-        <div id="sword-appearance-section">
-        <div class="wardrobe-divider"><span>长剑外观</span><small>选择外观将装备长剑</small></div>
-        <div class="sword-wardrobe-options" aria-label="长剑外观">
-          <button class="sword-style-card" type="button" data-sword-style="original" aria-pressed="false"><span class="sword-style-icon" aria-hidden="true">剑</span><span class="sword-style-copy"><strong>原版长剑</strong><small>经典剑形 · 江湖旧梦</small></span><span class="sword-style-status">选择</span></button>
-          <button class="sword-style-card" type="button" data-sword-style="butterfly" aria-pressed="false"><span class="sword-style-icon butterfly" aria-hidden="true">蝶</span><span class="sword-style-copy"><strong>月蝶剑</strong><small>冰蓝剑身 · 蝶翼护手</small></span><span class="sword-style-status">选择</span></button>
-          <button class="sword-style-card" type="button" data-sword-style="raiden" aria-pressed="false"><span class="sword-style-icon raiden" aria-hidden="true">影</span><span class="sword-style-copy"><strong>雷电影佩刀</strong><small>紫色弯刃 · 原模型贴图</small></span><span class="sword-style-status">选择</span></button>
-        </div>
-        </div>
-        <div id="spear-appearance-section" hidden>
-        <div class="wardrobe-divider"><span>长枪外观</span><small>选择外观将装备长枪</small></div>
-        <div class="sword-wardrobe-options" aria-label="长枪外观">
-          <button class="sword-style-card" type="button" data-spear-style="original" aria-pressed="false"><span class="sword-style-icon" aria-hidden="true">枪</span><span class="sword-style-copy"><strong>原版长枪</strong><small>经典长兵 · 一点寒芒</small></span><span class="sword-style-status">选择</span></button>
-          <button class="sword-style-card" type="button" data-spear-style="phoenix" aria-pressed="false"><span class="sword-style-icon phoenix" aria-hidden="true">凤</span><span class="sword-style-copy"><strong>霜翎凤鸣枪</strong><small>冰蓝双尖 · 银金凤翼</small></span><span class="sword-style-status">选择</span></button>
-        </div>
+        <div id="weapon-appearance-section">
+          <div class="wardrobe-divider"><span id="weapon-appearance-heading">长剑外观</span></div>
+          <div class="sword-wardrobe-options" id="weapon-appearance-options" role="group" aria-labelledby="weapon-appearance-heading" data-appearance-weapon="sword">
+            <button class="sword-style-card" type="button" data-weapon-appearance="original" aria-pressed="false"><span class="sword-style-icon" aria-hidden="true">剑</span><span class="sword-style-copy"><strong>原版长剑</strong><small>原版模型与贴图</small></span><span class="sword-style-status">选择</span></button>
+            <button class="sword-style-card selected" type="button" data-weapon-appearance="butterfly" aria-pressed="true"><span class="sword-style-icon butterfly" aria-hidden="true">蝶</span><span class="sword-style-copy"><strong>月蝶剑</strong><small>冰蓝剑身 · 蝶翼护手</small></span><span class="sword-style-status">已选</span></button>
+            <button class="sword-style-card" type="button" data-weapon-appearance="raiden" aria-pressed="false"><span class="sword-style-icon raiden" aria-hidden="true">影</span><span class="sword-style-copy"><strong>雷电影佩刀</strong><small>紫色弯刃 · 原模型贴图</small></span><span class="sword-style-status">选择</span></button>
+            <button class="sword-style-card weapon-skin-festive" type="button" data-weapon-appearance="fairy-wand" aria-pressed="false"><span class="sword-style-icon" aria-hidden="true">星</span><span class="sword-style-copy"><strong>仙女棒</strong><small>原版圣诞外观 · 璀璨长剑</small></span><span class="sword-style-status">选择</span></button>
+          </div>
         </div>
         <div class="practice-options">
         <div class="training-enemy-setting">
@@ -136,8 +130,9 @@
   </script>
   <script type="importmap">
     {"imports":{
-      "./engine.js":"./engine.js?v=20261116-training",
+      "./engine.js":"./engine.js?v=20261116-wardrobe",
       "./network-lobby.js":"./network-lobby.js?v=20261113-load",
+      "./network-game.js":"./network-game.js?v=20261116-wardrobe",
       "./character-appearances.js":"./character-appearances.js?v=20261116-outfits",
       "./character-catalog.js":"./character-catalog.js?v=20261116-training",
       "./native-character.js":"./native-character.js?v=20261113-load",
@@ -145,6 +140,6 @@
       "./qiyun-courtyard.js":"./qiyun-courtyard.js?v=20261113-load"
     }}
   </script>
-  <script type="module" src="./app.js?v=20261116-training"></script>
+  <script type="module" src="./app.js?v=20261116-wardrobe"></script>
 </body>
 </html>

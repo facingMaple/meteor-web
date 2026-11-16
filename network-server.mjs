@@ -2,6 +2,7 @@ import {NETWORK_PROTOCOL,roomRules} from './dist/network-rules.js';
 const validBloodStyle=s=>!!s&&['slash','thrust','impact','launch','shot'].includes(s.kind)&&Number.isInteger(s.level)&&s.level>=0&&s.level<=2;
 import http from 'node:http';
 import { battleCharacterSelection } from './dist/character-appearances.js';
+import { normalizeNativeWeaponAppearances } from './dist/native-weapon-appearances.js';
 import {randomBytes} from 'node:crypto';
 import {readFile,stat} from 'node:fs/promises';
 import {createReadStream} from 'node:fs';
@@ -57,7 +58,7 @@ export class NetworkRooms{
     if(room.phase==='loading'||room.phase==='waiting'){room.phase='waiting';for(const p of room.players){p.ready=false;p.loaded=false;}}
   }
   sweep(){for(const [code,r] of this.rooms){if(this.now()-r.players[0].seen>20000)this.rooms.delete(code);else for(const p of [...r.players].slice(1))if(this.now()-p.seen>20000)this.remove(r,p);}}
-  player(name,selection){return {id:token().slice(0,12),token:token(),name:String(name||'江湖来客').trim().slice(0,16)||'江湖来客',selection:battleCharacterSelection(selection),seen:this.now(),ready:false,loaded:false,input:[],lastSequence:0,deliveredSequence:0,ackSequence:0};}
+  player(name,selection){return {id:token().slice(0,12),token:token(),name:String(name||'江湖来客').trim().slice(0,16)||'江湖来客',selection:{...battleCharacterSelection(selection),weaponAppearances:normalizeNativeWeaponAppearances(selection?.weaponAppearances)},seen:this.now(),ready:false,loaded:false,input:[],lastSequence:0,deliveredSequence:0,ackSequence:0};}
   create(name,options={}){this.sweep();if(this.rooms.size>=32)fail('房间数量已达上限');let rules;try{rules=roomRules(options);}catch{fail('房间规则无效');}const p=this.player(name,options.selection);p.team=1;let code;do{code=randomBytes(3).toString('hex').toUpperCase();}while(this.rooms.has(code));const r={code,hostId:p.id,phase:'waiting',rules,players:[p],frame:null,frameSequence:0};this.rooms.set(code,r);return {room:this.public(r),playerId:p.id,token:p.token};}
   join(code,name,selection){this.sweep();const r=this.rooms.get(code);if(!r)fail('房间不存在或房主已离开',404);if(r.phase!=='waiting'||r.players.length>=r.rules.maxPlayers)fail('房间已满或已经开局',409);const p=this.player(name,selection);p.team=r.players.filter(x=>x.team===1).length<=r.players.filter(x=>x.team===2).length?1:2;r.players.push(p);for(const x of r.players)x.ready=false;r.revision=(r.revision||0)+1;return {room:this.public(r),playerId:p.id,token:p.token};}
   request(code,credential,operation,data={}, {touch=true}={}){

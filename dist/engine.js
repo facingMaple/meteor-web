@@ -28,6 +28,7 @@ import { createNativeEnvironment } from './native-environment.js';
 import { NativeWeather } from './native-weather.js';
 import { NativeItemSystem, useNativeScriptItem, useNativeAttackItem, useNativeSelfItem, nativeMovementScale, nativeAirMovementScale, nativeRageMaximum, nativeIsInvisible, updateNativeScriptItems, clearNativeScriptItems } from './native-items.js';
 import { QIANKUN_MODE_NAMES } from './native-weapon-menu.js';
+import { DEFAULT_NATIVE_WEAPON_APPEARANCES, nativeWeaponAppearance } from './native-weapon-appearances.js';
 import { sweepActorCapsule, NativeProjectileSystem, aimNativeDart, NATIVE_DART_PROFILE, NativeMusketSystem, NATIVE_MUSKET_PROFILE, NativeWheelSystem, NATIVE_WHEEL_PROFILE } from './native-projectiles.js';
 import { NativeImpactFeedback } from './native-impact-feedback.js';
 import { NativeBloodFeedback, bloodStyleForHit } from './native-blood-feedback.js';
@@ -85,7 +86,7 @@ export class MeteorGame {
     this.frameMeter = new FrameMeter(); this.frameOverlay = createFrameOverlay(canvas.ownerDocument);
     this.renderScale = new RenderScaleController(this.renderer.getPixelRatio());
     this.clock = new THREE.Clock(); this.simulationClock = new FixedStepClock(); this.elapsed = 0; this.updateAccum = 0; this.running = false; this.paused = false;
-    this.map = 'sifang'; this.weapon = 'sword'; this.swordStyle = 'butterfly'; this.spearStyle = 'original'; this.infiniteRage = false; this.characterId = 0; this.characterAppearance = DEFAULT_CHARACTER_APPEARANCE; this.appearanceRequest = 0; this.actorSerial = 0; this.mode = 'training'; this.enemies = []; this.keys = new Set();
+    this.map = 'sifang'; this.weapon = 'sword'; this.weaponAppearances = { ...DEFAULT_NATIVE_WEAPON_APPEARANCES }; this.swordStyle = this.weaponAppearances.sword; this.spearStyle = this.weaponAppearances.spear; this.infiniteRage = false; this.characterId = 0; this.characterAppearance = DEFAULT_CHARACTER_APPEARANCE; this.appearanceRequest = 0; this.actorSerial = 0; this.mode = 'training'; this.enemies = []; this.keys = new Set();
     this.cameraManualUntil = 0; this.cameraAngle = .4; this.cameraPitch = .45; this.cameraDistance = 8; this.cameraTarget = v3(); this.locked = null;
     this.raycaster = new THREE.Raycaster(); this.collisionMaterial = new THREE.MeshBasicMaterial({ side: THREE.DoubleSide });
     this.mapCache = new Map(); this.mapData = new Map(); this.pendingMaps = new Set(); this.weaponCache = new Map(); this.soundCache = new Map(); this.effects = []; this._listeners = []; this.mapRequest = 0; this.characterRequest = 0; this.sessionRequest = 0; this.directionBuffer = [];
@@ -401,11 +402,14 @@ export class MeteorGame {
     if (!item || !item.available) throw new Error(`Original weapon item ${selection} unavailable`);
     const prefix = item.modelId.toLowerCase().split('_')[0], name = Object.keys(NATIVE_WEAPONS).find(key => NATIVE_WEAPONS[key].model.split('_')[0] === prefix);
     if (!name) throw new Error(`Original weapon action family ${item.modelId} has not been ported`);
+    const appearanceSet = f.hero ? this.weaponAppearances : f.networkWeaponAppearances;
+    const appearance = this.mode !== 'story' && appearanceSet ? nativeWeaponAppearance(name, appearanceSet[name] || 'original') : null;
+    const visualModelIds = appearance?.modelIds?.length ? appearance.modelIds : item.modelIds;
     const retained=preserveCombat?{weapon:f.weapon,weaponId:f.weaponId,weaponName:f.weaponName,weaponRecord:f.weaponRecord,weaponReach:f.weaponReach,
       mode:f.combat.weaponMode,models:(f.weaponModels||[]).map(model=>({model,parent:model.parent}))}:null;
     this.stealthFeedback?.clearActor(f);
     f.weaponPoseUnsubscribe?.(); f.weaponPoseUnsubscribe = null;
-    f.weapon = name; f.weaponId = Number(item.itemId); f.weaponName = item.name; f.weaponRecord = this.combatData.weaponRecords.get(item.modelId.toLowerCase());
+    f.weapon = name; f.weaponId = Number(item.itemId); f.weaponName = item.name; f.weaponRecord = this.combatData.weaponRecords.get(item.modelId.toLowerCase()); f.weaponAppearance = appearance?.id || 'original';
     if(name==='knuckle'&&this.weaponItems.get(f.weapon2Id)?.available)this._prepareWeapon(f.weapon2Id).catch(()=>{});
     f.musketAim=false;
     if(preserveCombat){f.combat.weapon=name;f.combat.weaponMode='blade';}
@@ -415,10 +419,18 @@ export class MeteorGame {
     f.raidenSword?.removeFromParent(); f.raidenSword = null;
     disposePhoenixSpear(f.phoenixSpear); f.phoenixSpear = null;
     for (const model of f.weaponModels || (f.weaponModel ? [f.weaponModel] : [])) model.removeFromParent(); f.weaponModels = []; f.weaponModel = null; f.butterflySword = null;
-    const ids = item.modelIds.map(id => id.toLowerCase());
-    for (const id of ids) if (!this.weaponCache.has(id)) this.weaponCache.set(id, this._readWeapon(id).catch(error => { this.weaponCache.delete(id); throw error; }));
+    let ids = visualModelIds.map(id => id.toLowerCase()); const reachModelId = NATIVE_WEAPONS[name].model.toLowerCase();
+    for (const id of new Set([...ids, reachModelId])) if (!this.weaponCache.has(id)) this.weaponCache.set(id, this._readWeapon(id).catch(error => { this.weaponCache.delete(id); throw error; }));
     try {
-      const [templates, gripManifest] = await Promise.all([Promise.all(ids.map(id => this.weaponCache.get(id))), name === 'qiankun' ? loadNativeEffectManifest() : null]);
+      let templates,gripManifest;
+      try{[templates,gripManifest]=await Promise.all([Promise.all(ids.map(id => this.weaponCache.get(id))),name==='qiankun'?loadNativeEffectManifest():null]);}
+      catch(error){
+        if(!appearance?.modelIds?.length)throw error;
+        ids=item.modelIds.map(id=>id.toLowerCase());
+        for(const id of ids)if(!this.weaponCache.has(id))this.weaponCache.set(id,this._readWeapon(id).catch(failure=>{this.weaponCache.delete(id);throw failure;}));
+        [templates,gripManifest]=await Promise.all([Promise.all(ids.map(id=>this.weaponCache.get(id))),name==='qiankun'?loadNativeEffectManifest():null]);
+        f.weaponAppearance='original';this._emit(`${appearance.name}载入失败，已恢复原版外观`,'info');
+      }
       const models = templates.map(model => model.clone(true));
       if (this.disposed || f.disposed || request !== f.equipRequest) return;
       // GMC is converted Z-up→Y-up by the loader; attachments still use native
@@ -433,7 +445,9 @@ export class MeteorGame {
       }
       f.weaponModels = models; f.weaponModel = models[0];
       if (name === 'qiankun') f.weaponPoseUnsubscribe = bindQiankunGrip(f, this.combatData, gripManifest);
-      f.weaponReach = clamp(new THREE.Box3().setFromObject(models[0]).getSize(v3()).length() * .65, 1.8, 4.8);
+      const reachTemplate = await this.weaponCache.get(reachModelId);
+      if (this.disposed || f.disposed || request !== f.equipRequest) return;
+      f.weaponReach = clamp(new THREE.Box3().setFromObject(reachTemplate).getSize(v3()).length() * .65, 1.8, 4.8);
       if (name === 'wheel') f.weaponReach = 14;
       if (name === 'musket') f.weaponReach = 18; // Web NPC firing distance, not a recovered EXE constant.
       if (f.hero && name === 'sword') {
@@ -937,25 +951,32 @@ export class MeteorGame {
   }
   _syncSwordStyle(actor) {
     if (!actor?.weaponModel) return;
-    const butterfly = this.swordStyle === 'butterfly' && !!actor.butterflySword;
-    const raiden = this.swordStyle === 'raiden' && !!actor.raidenSword;
+    const style = this.mode === 'story' ? 'original' : this.swordStyle;
+    const butterfly = style === 'butterfly' && !!actor.butterflySword;
+    const raiden = style === 'raiden' && !!actor.raidenSword;
     actor.weaponModel.visible = !butterfly && !raiden;
     if (actor.butterflySword) actor.butterflySword.visible = butterfly;
     if (actor.raidenSword) actor.raidenSword.visible = raiden;
     if (actor.hero) this.butterflyVfx?.setVisible(butterfly);
   }
   setSwordStyle(style) {
-    if (!['original','butterfly','raiden'].includes(style)) throw new Error('Unknown sword style');
-    this.swordStyle=style; this._syncSwordStyle(this.hero);
+    if (!nativeWeaponAppearance('sword', style)) throw new Error('Unknown sword style');
+    this.swordStyle=style; this.weaponAppearances.sword=style; this._syncSwordStyle(this.hero);
   }
   _syncSpearStyle(actor) {
     if (!actor?.phoenixSpear || !actor.weaponModel) return;
-    const enhanced = this.spearStyle === 'phoenix';
+    const enhanced = this.mode !== 'story' && this.spearStyle === 'phoenix';
     actor.weaponModel.visible = !enhanced; actor.phoenixSpear.visible = enhanced;
   }
   setSpearStyle(style) {
-    if (!['original', 'phoenix'].includes(style)) throw new Error('Unknown spear style');
-    this.spearStyle = style; this._syncSpearStyle(this.hero);
+    if (!nativeWeaponAppearance('spear', style)) throw new Error('Unknown spear style');
+    this.spearStyle = style; this.weaponAppearances.spear=style; this._syncSpearStyle(this.hero);
+  }
+  setWeaponAppearance(weapon, appearance) {
+    if (!nativeWeaponAppearance(weapon, appearance)) throw new Error('Unknown weapon appearance');
+    if (weapon === 'sword') { this.setSwordStyle(appearance); return; }
+    if (weapon === 'spear') { this.setSpearStyle(appearance); return; }
+    this.weaponAppearances[weapon] = appearance;
   }
   async setWeapon(name) { if (!NATIVE_WEAPONS[name] || this.mode === 'story' || this.running && this.hero?.combat.reacting) return; this.weapon = name; if (this.hero) await this._equip(this.hero, name); this._hud(); }
   async switchWeapon() {
@@ -1643,7 +1664,7 @@ export class MeteorGame {
     const item = this.running ? this.items?.peek(f) : null;
     const pickup = item ? { name: item.name, heal: item.heal, description:item.description, fullReason:item.fullReason, full: item.full, distance: item.distance, objectName: item.objectName } : null;
     const statuses = (f.networkItemStatuses || f.scriptItems || []).map(item => ({ id: item.id, name: item.name, statKey: item.statKey, remaining: item.remaining, value: item.value, period: item.period }));
-    this.onUpdate({ musketAim:!!f.musketAim, infiniteRage: !!this.infiniteRage, characterAppearance: f.character.appearanceStatus, pickup, statuses, inputBlocked: !!f.scriptInputBlocked, hp: f.hp, maxHp: f.maxHp, playerReaction: f.networkReactionPhase??f.combat.reactionPhase, rage: f.rage, hits: this.contactHits, kills: this.kills, deaths: this.deaths, time: this.matchElapsed, enemy, combo: f.combat.attacking ? f.combat.combo : 0, moveName: f.combat.busy ? f.combat.currentMove?.name : null, moveCommand: f.combat.busy ? f.combat.currentMove?.command : null, queuedMoveName: this.networkCombat&&this.lootReplica?f.networkQueuedMoveName??null:f.combat.queuedMove?.name||null, locked: !!this.locked, position: { x: f.root.position.x, z: f.root.position.z }, enemies: this.enemies.filter(e => !e.dead && !e.scriptRemoved && !nativeSameTeam(e,f) && e.team !== 0 && !nativeIsInvisible(e)).map(e => ({ x: e.root.position.x, z: e.root.position.z })), allies: this.enemies.filter(e => !e.dead && !e.scriptRemoved && nativeSameTeam(e,f)).map(e => ({ x: e.root.position.x, z: e.root.position.z })), weapon: f.weapon, weaponId: f.weaponId, weaponName: f.weaponName, weapon2Name:this.weaponItems?.get(f.weapon2Id)?.name||null, weaponMode: f.combat.weaponMode, mission: this.missionState, paused: this.paused, mapBounds: b ? { minX: b.min.x, maxX: b.max.x, minZ: b.min.z, maxZ: b.max.z } : null, native: { pose: f.combat.timeline?.pose.id, source: f.character.source, frame: f.character.frame, contacts: this.contactHits, damagePending: !this.damageResolver, hpSourcePending: !f.hpSourceVerified, physicsPending: true, sceneDamagePending: this.mode === 'story' && !this.sceneDamageResolver, projectilePending: false, projectileSpecialsPending: true, projectilePhysics: NATIVE_DART_PROFILE.provenance.flight, projectiles: this.projectiles?.size || 0, missionVmPending: this.mode === 'story' ? !this.missionHost?.started : false } });
+    this.onUpdate({ musketAim:!!f.musketAim, infiniteRage: !!this.infiniteRage, characterAppearance: f.character.appearanceStatus, pickup, statuses, inputBlocked: !!f.scriptInputBlocked, hp: f.hp, maxHp: f.maxHp, playerReaction: f.networkReactionPhase??f.combat.reactionPhase, rage: f.rage, hits: this.contactHits, kills: this.kills, deaths: this.deaths, time: this.matchElapsed, enemy, combo: f.combat.attacking ? f.combat.combo : 0, moveName: f.combat.busy ? f.combat.currentMove?.name : null, moveCommand: f.combat.busy ? f.combat.currentMove?.command : null, queuedMoveName: this.networkCombat&&this.lootReplica?f.networkQueuedMoveName??null:f.combat.queuedMove?.name||null, locked: !!this.locked, position: { x: f.root.position.x, z: f.root.position.z }, enemies: this.enemies.filter(e => !e.dead && !e.scriptRemoved && !nativeSameTeam(e,f) && e.team !== 0 && !nativeIsInvisible(e)).map(e => ({ x: e.root.position.x, z: e.root.position.z })), allies: this.enemies.filter(e => !e.dead && !e.scriptRemoved && nativeSameTeam(e,f)).map(e => ({ x: e.root.position.x, z: e.root.position.z })), weapon: f.weapon, weaponId: f.weaponId, weaponName: f.weaponName, weaponAppearance:f.weaponAppearance||'original', weapon2Name:this.weaponItems?.get(f.weapon2Id)?.name||null, weaponMode: f.combat.weaponMode, mission: this.missionState, paused: this.paused, mapBounds: b ? { minX: b.min.x, maxX: b.max.x, minZ: b.min.z, maxZ: b.max.z } : null, native: { pose: f.combat.timeline?.pose.id, source: f.character.source, frame: f.character.frame, contacts: this.contactHits, damagePending: !this.damageResolver, hpSourcePending: !f.hpSourceVerified, physicsPending: true, sceneDamagePending: this.mode === 'story' && !this.sceneDamageResolver, projectilePending: false, projectileSpecialsPending: true, projectilePhysics: NATIVE_DART_PROFILE.provenance.flight, projectiles: this.projectiles?.size || 0, missionVmPending: this.mode === 'story' ? !this.missionHost?.started : false } });
   }
   _emit(text, type = 'info', amount, point, extra = {}) { const p = point?.clone().project(this.camera); this.onEvent({ text, type, amount, x: p ? (p.x + 1) / 2 : undefined, y: p ? (1 - p.y) / 2 : undefined, ...extra }); }
   _resetWorldClock() { this.simulationClock?.reset(); this.clock?.getDelta(); this.frameMeter?.reset(); }

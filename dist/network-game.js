@@ -2,6 +2,7 @@ import {nativeIsInvisible} from './native-items.js';
 import {networkSpawns} from './network-spawns.js';
 import {roomRules,matchResult,NETWORK_MODES} from './network-rules.js';
 import { battleCharacterSelection } from './character-appearances.js';
+import { normalizeNativeWeaponAppearances } from './native-weapon-appearances.js';
 // Listen-host simulation adapter: guests submit inputs, never HP/damage.
 // Uses the same native POS/ACT/RES combat, movement and collision paths.
 const continuous=['forward','back','left','right','guard','crouch'];
@@ -75,7 +76,7 @@ export class NetworkGame{
       for(const player of room.players.filter(p=>p.id!==client.playerId)){
         const selection=battleCharacterSelection(player.selection);
         const peer=await game._createFighter(selection.character,player.name,false,null,selection.characterAppearance);created.push(peer);
-        if(!valid())return null;peer.networkId=player.id;game.scene.add(peer.root);game.enemies.push(peer);await game._equip(peer,'sword');if(!valid())return null;
+        if(!valid())return null;peer.networkId=player.id;peer.networkWeaponAppearances=normalizeNativeWeaponAppearances(player.selection?.weaponAppearances);game.scene.add(peer.root);game.enemies.push(peer);await game._equip(peer,'sword');if(!valid())return null;
       }
       previousSpawns=game.currentMap.spawns;matchSpawns=networkSpawns(game,room.players.length);game.currentMap.spawns=matchSpawns;
       for(const player of room.players){

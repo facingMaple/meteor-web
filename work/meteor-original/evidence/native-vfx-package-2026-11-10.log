@@ -4,6 +4,7 @@
 
 {
   "archive": "artifacts/meteor-web-v0.7.6.zip",
+  "archiveRemovedAt": "2026-11-16",
   "version": "0.7.6",
   "bytes": 136390096,
   "sha256": "edf7ee0cdda734dfad9c55bcc1f4482a48841cd022aaf6ecbf8bc84ee79f193a",

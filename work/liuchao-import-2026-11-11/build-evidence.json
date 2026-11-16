@@ -689,17 +689,34 @@
       "sourceVertices": 6,
       "runtimeVertices": 30,
       "triangles": 56
+    },
+    {
+      "name": "后脑 · 原始头皮",
+      "sourceVertices": 468,
+      "runtimeVertices": 2610,
+      "triangles": 870
     }
   ],
   "floor": 0.016040917485952377,
   "top": 1.757750153541565,
   "scale": 22.62145666128968,
   "sourceHash": "e0328115778c4dcbbd910102515dc42ef72f19306425a075858c2ffe1d9fcaa5",
-  "runtimeBytes": 19782969,
+  "runtimeBytes": 20079559,
   "textures": {
     "颜.png": "textures/颜.png",
     "髮.png": "textures/髮.png",
     "hair-cap.jpg": "textures/hair-cap.jpg",
-    "hair-locks.png": "textures/hair-locks.png"
+    "hair-locks.png": "textures/hair-locks.png",
+    "Liuchao baked scalp": "textures/scalp.webp"
+  },
+  "scalp": {
+    "source": {
+      "file": "琉潮-修复版.blend",
+      "bytes": 13924028,
+      "sha256": "e4f478a9db589bf448c171290a8c53e69282f877fe36346b45d8e675db113563"
+    },
+    "seamVertices": 48,
+    "triangles": 870,
+    "texture": "textures/scalp.webp"
   }
 }

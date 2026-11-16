@@ -16,6 +16,7 @@ from mathutils import Matrix, Quaternion, Vector
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from proportional_authoring import bake_source_samples, build_source_armature
+from restore_liuchao_scalp import SCALP, restore_scalp
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -79,6 +80,11 @@ def create_parts(skin, parts, collection):
     for part in parts:
         vertex_end = vertex_start + part['runtimeVertices']
         face_end = face_start + part['triangles']
+        # The editable face joins the scalp to the face vertices. The Web copy
+        # splits those vertices by UV and is stored as a separate export part.
+        if part['name'] == SCALP:
+            vertex_start, face_start = vertex_end, face_end
+            continue
         faces = skin['faces'][face_start:face_end]
         triangles = np.asarray([face['indices'] for face in faces], dtype=np.int32) - vertex_start
         assert triangles.min() >= 0 and triangles.max() < part['runtimeVertices'], part['name']
@@ -234,6 +240,8 @@ def main():
     collection = bpy.data.collections.new('琉潮 · 可编辑网格')
     scene.collection.children.link(collection)
     objects = create_parts(skin, parts, collection)
+    face = next(obj for obj in objects if obj.name == '官方面部 · 游戏适配')
+    restore_scalp(face, rig)
     body = next(obj for obj in objects if obj.name.startswith('身体 · '))
     armature, rest, rest_error = build_source_armature(body, rig, [], label='琉潮')
     for obj in objects:
@@ -254,6 +262,7 @@ def main():
         '琉潮 · 修复版\n\n'
         '从游戏使用的修复模型还原为可编辑网格，贴图已打包。'
         '身体对象含肩背修整和与身体共用顶点的泳装下装，短发、马尾及饰物分别保留为网格。\n'
+        '后脑和耳朵取自原始底稿，沿脸部边缘拼接并绑定头骨。头顶补成圆弧，可隐藏头发检查。\n'
         '打开时显示自然站立的背面，另有正面相机。'
         '可在动作编辑器中选自然站立、持剑待机、跑步、跳跃或挥剑。\n'
         '此副本使用 30 根游戏动作骨骼，原有 MMD 控制器、面部形态键和曲线对象可在同目录的琉潮.blend 中找到。\n'

@@ -8,6 +8,7 @@ from mathutils import Vector
 import numpy as np
 sys.path.insert(0,str(Path(__file__).parent))
 from hutao_native_rest import B, world as REST
+from export_liuchao_scalp import EDITABLE, EVIDENCE, export as export_repaired_scalp
 ROOT=Path(__file__).resolve().parents[2]
 SRC=ROOT/'assets/source/liuchao/琉潮.blend'
 OUT=ROOT/'dist/assets/enhanced/liuchao'
@@ -464,3 +465,5 @@ manifest=dict(schema=1,characterId=0,appearance='liuchao',label='琉潮 · 原�
 (OUT/'manifest.json').write_text(json.dumps(manifest,ensure_ascii=False,indent=2))
 (WORK/'build-evidence.json').write_text(json.dumps(dict(objects=object_stats,floor=floor,top=top,scale=scale,sourceHash=manifest['sourceFiles'][0]['sha256'],runtimeBytes=(OUT/'mesh.json').stat().st_size,textures=saved),ensure_ascii=False,indent=2))
 print('LIUCHAO_READY',manifest['stats'],flush=True)
+if EDITABLE.is_file():
+ export_repaired_scalp(OUT, EVIDENCE)

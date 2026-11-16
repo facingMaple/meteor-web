@@ -128,10 +128,12 @@ test('cold lightweight training loads its selected map and original cast through
     assert.equal(game.hero, undefined);
     assert.equal(game.currentMap, undefined);
     assert.equal([...paths].some(path => /\.(amb|gmb|gmc)$/.test(path) || path.endsWith('.ambpack.gz')), false);
-    await game.start({ map: 'cave', character: 0, characterAppearance: 'liuchao', lowBandwidth: true });
+    await game.start({ map: 'cave', character: 0, characterAppearance: 'liuchao', lowBandwidth: true, enemyCount: 6 });
     assert.equal(game.currentMap.id, 'sn01');
     assert.equal(game.hero.character.appearance, 'original');
-    assert.deepEqual(game.enemies.map(actor => actor.modelId), [1, 2, 3]);
+    assert.equal(game.enemies.length, 6);
+    assert.equal(new Set(game.enemies.map(actor => actor.modelId)).size, 6);
+    assert.ok(game.enemies.every(actor => actor.modelId !== game.hero.modelId && actor.character.appearance === 'original'));
     assert.equal(game.running, true);
     assert.deepEqual(completedSteps, [2, 3]);
     assert.equal([...paths].some(path => path.includes('/sn06/') || path.startsWith('assets/enhanced/')), false);

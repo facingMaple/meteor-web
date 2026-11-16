@@ -63,7 +63,7 @@ test('HTTP integration shares authoritative frame between two independent room i
   const server=createNetworkServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;
   const post=async(path,data={},credential)=>{const response=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(credential?{Authorization:'Bearer '+credential}:{})},body:JSON.stringify(data)});return {status:response.status,body:await response.json()};};
   try{const a=(await post('/api/rooms/create',{name:'房主'})).body,b=(await post('/api/rooms/join',{code:a.room.code,name:'加入者',selection:{character:1,characterAppearance:'original'}})).body;
-    assert.deepEqual(b.room.players.map(player=>player.selection), [{character:0,characterAppearance:'liuchao'},{character:1,characterAppearance:'original'}]);
+    assert.deepEqual(b.room.players.map(player=>player.selection), [{character:0,characterAppearance:'liuchao-mint'},{character:1,characterAppearance:'original'}]);
     const cmd=(p,op,data={})=>post(`/api/rooms/${a.room.code}/${op}`,{round:1,...data},p.token);
     await cmd(a,'ready',{ready:true});await cmd(b,'ready',{ready:true});await cmd(a,'start');await cmd(a,'loaded');await cmd(b,'loaded');
     await cmd(b,'sync',{input:[{action:'forward',active:true,angle:0,sequence:1}]});const host=await cmd(a,'sync',{frame:frame(a,b)}),guest=await cmd(b,'sync');

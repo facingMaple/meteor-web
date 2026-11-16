@@ -15,11 +15,12 @@ function refreshKeyGuide(){
 }
 refreshKeyGuide();
 import { DEFAULT_CHARACTER_APPEARANCE, NATIVE_CHARACTERS, NATIVE_APPEARANCES } from './character-catalog.js';
-import { FEATURED_APPEARANCES, appearanceDetails, appearanceCharacterName, appearanceCharacterSeal, battleCharacterSelection, savedBattleCharacterSelection } from './character-appearances.js';
+import { appearanceDetails, appearanceCharacterName, appearanceCharacterSeal, battleCharacterSelection, savedBattleCharacterSelection } from './character-appearances.js';
 import { NATIVE_MISSIONS, getNativeMission } from './native-missions.js';
 import { NATIVE_WEAPON_MENU, QIANKUN_MODE_NAMES } from './native-weapon-menu.js';
 import { renderNativeMoveGuide } from './native-move-guide.js';
 import { QIYUN_MAP } from './qiyun-map.js';
+import { TRAINING_ENEMY_COUNT, trainingEnemyCount } from './training-settings.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -28,14 +29,15 @@ const maps={sifang:{name:'四方阵',english:'THE FOUR SQUARES',poem:'方寸之�
 maps[QIYUN_MAP.id] = QIYUN_MAP;
 for(const mission of NATIVE_MISSIONS)maps[mission.mapId]={name:mission.name,english:'ORIGINAL MISSION · '+mission.id.toUpperCase(),poem:'原版单机任务'};
 const weapons=NATIVE_WEAPON_MENU;
-let prefs={showFps:false,weapon:'sword',map:QIYUN_MAP.id,character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',mission:'sn01',completedMissions:[],difficulty:'normal',infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
-try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');for(const k of ['showFps','weapon','character','characterAppearance','characterSelected','swordStyle','spearStyle','mission','completedMissions','difficulty','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];}catch{}
+let prefs={showFps:false,weapon:'sword',map:QIYUN_MAP.id,character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',mission:'sn01',completedMissions:[],difficulty:'normal',enemyCount:TRAINING_ENEMY_COUNT.defaultValue,infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
+try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');for(const k of ['showFps','weapon','character','characterAppearance','characterSelected','swordStyle','spearStyle','mission','completedMissions','difficulty','enemyCount','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];}catch{}
 
 if(!weapons[prefs.weapon])prefs.weapon='sword';if(!['normal','hard'].includes(prefs.difficulty))prefs.difficulty='normal';if(!['low','high'].includes(prefs.quality))prefs.quality='high';
 Object.assign(prefs, savedBattleCharacterSelection(prefs));
 if(!Object.hasOwn(swordStyleNames,prefs.swordStyle))prefs.swordStyle='butterfly';
 if(!['original','phoenix'].includes(prefs.spearStyle))prefs.spearStyle='original';
 prefs.infiniteRage=prefs.infiniteRage===true;
+prefs.enemyCount = trainingEnemyCount(prefs.enemyCount);
 const appearanceURL = new URL(location.href);
 const linkedAppearance = appearanceURL.searchParams.get('appearance');
 if (linkedAppearance !== null) {
@@ -200,7 +202,15 @@ function renderArenaMaps(){
   }
 }
 const canonicalMap=id=>({sifang:'sn06',cave:'sn01',forge:'sn10'}[id]||id);
+function updateEnemyCount() {
+  const input = $('#training-enemy-count');
+  const label = `${prefs.enemyCount} 名`;
+  input.value = prefs.enemyCount;
+  input.setAttribute('aria-valuetext', label);
+  $('#training-enemy-value').value = label;
+}
 function updateSelection(){
+  updateEnemyCount();
   $('#infinite-rage').checked=prefs.infiniteRage;
   $('#infinite-rage-status').textContent=prefs.infiniteRage?'已开启':'已关闭';
   $$('.arena-card').forEach(el=>{const selected=canonicalMap(el.dataset.map)===canonicalMap(prefs.map);el.classList.toggle('selected',selected);el.setAttribute('aria-pressed',String(selected));});
@@ -395,7 +405,8 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
     $('#hud-map').textContent = mapName + (currentMode === 'network' ? ' · 联机对战' : mission ? ' · 单机任务' : ' · 演武');
     $('#battle-hint-text').textContent = '原版招式演武 · 按 ' + keyHint('attack') + ' 出招';
     updateMatchLoad(`正在载入${mapName}与人物动作…`, 1);
-    await instance.start({ map, weapon, difficulty: prefs.difficulty, ...selection, mode: currentMode, lowBandwidth: currentLowBandwidth });
+    await instance.start({ map, weapon, difficulty: prefs.difficulty, ...selection, mode: currentMode,
+      lowBandwidth: currentLowBandwidth, enemyCount: prefs.enemyCount });
     if (!isCurrent()) return;
     updateMatchLoad('战场已就绪', 4);
     instance.menuIdle = false;
@@ -491,6 +502,11 @@ document.addEventListener('click',e=>{
   const action=e.target.closest('[data-do]');if(action){switch(action.dataset.do){case'play':if(running)closeModal();else showLobbyPage('prep');break;case'restart':startMatch(currentMode, undefined, undefined, undefined, currentLowBandwidth);break;case'story':startMatch('story',action.dataset.mission||currentMissionId);break;case'resume':closeModal();break;case'prepare':returnLobby();showLobbyPage('prep');break;case'lobby':returnLobby();break;case'sound':toggleSound();break;}}
 });
 $('#start-game').addEventListener('click', () => startMatch());
+$('#training-enemy-count').addEventListener('input', event => {
+  prefs.enemyCount = trainingEnemyCount(event.currentTarget.valueAsNumber);
+  updateEnemyCount();
+});
+$('#training-enemy-count').addEventListener('change', save);
 $('#start-low-bandwidth').addEventListener('click', () => startMatch('training', undefined, undefined, undefined, true));$('#close-modal').addEventListener('click',closeModal);$('#pause-button').addEventListener('click',()=>openModal('pause'));
 modal.addEventListener('cancel',e=>{e.preventDefault();closeModal();});modal.addEventListener('click',e=>{if(e.target===modal){const r=modal.getBoundingClientRect();if(e.clientX<r.left||e.clientX>r.right||e.clientY<r.top||e.clientY>r.bottom)closeModal();}});
 document.addEventListener('keydown',e=>{if(e.key!=='Escape'||modal.open||loadingMatch)return;if(running){e.preventDefault();openModal('pause');}else if(lobbyPage!=='home'){e.preventDefault();showLobbyPage('home');}});

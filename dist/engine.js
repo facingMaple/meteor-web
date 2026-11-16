@@ -12,11 +12,12 @@ import { bindLocalPlayerControl, clearPlayerCommands, applyPlayerLook, usesPlaye
 import { createMouseLook, turnMouseCamera } from './mouse-look.js';
 import { bindKeyboard, defaultBindings } from './keybindings.js';
 import * as THREE from './vendor/three.module.js';
-import { findNativeEnemy } from './native-awareness.js';
+import { findNativeEnemy, NATIVE_AWARENESS } from './native-awareness.js';
 import { NativeNpcCombat, nativeNpcMove, nativeNpcInRange, nativeNpcFacing } from './native-npc-combat.js';
 import { loadGmb, loadGmc } from './gmc-loader.js';
-import { DEFAULT_CHARACTER_APPEARANCE, loadNativeCharacter, NATIVE_APPEARANCES } from './native-character.js';
+import { DEFAULT_CHARACTER_APPEARANCE, loadNativeCharacter, NATIVE_APPEARANCES, NATIVE_CHARACTERS } from './native-character.js';
 import { appearanceCharacterName, FEATURED_APPEARANCES } from './character-appearances.js';
+import { trainingEnemyCount } from './training-settings.js';
 import { loadNativeCombat, NativeCombatController, NATIVE_WEAPONS, NATIVE_LOCOMOTION, createNativeDamageResolver, createNativeSceneDamageResolver, nativeReactionParameters, nativeHitAngle, nativeHitSelection, nativeGuardPose, nativeAttackFrames } from './native-combat.js';
 import { NATIVE_MOVE_CATALOG } from './native-move-catalog.js';
 import { recordNativeDirection, selectNativeMove, NATIVE_RECOVERY_INPUT_WINDOW } from './native-input.js';
@@ -51,6 +52,13 @@ const wallSurfaceNormal = hit => hit.face.normal.clone().applyNormalMatrix(new T
 const ceilingProbeOffsets = [[0,0],...Array.from({length:8},(_,i)=>[Math.cos(i*Math.PI/4),Math.sin(i*Math.PI/4)])];
 const flatDistance = (a, b) => Math.hypot(a.x - b.x, a.z - b.z);
 const originalRoot = new URL('./assets/original/', import.meta.url);
+const TRAINING_WEAPONS = ['sword', 'blade', 'spear'];
+
+function sampleOpponents(pool, count) {
+  const remaining = [...pool];
+  return Array.from({ length: Math.min(count, pool.length) }, () =>
+    remaining.splice(Math.floor(Math.random() * remaining.length), 1)[0]);
+}
 
 // Original POS names use spaces ("bad R Foot"), while the supplied BNC uses
 // underscores ("bad_R_Foot"). Resolve that spelling difference at the attack
@@ -354,6 +362,8 @@ export class MeteorGame {
     if (rotation?.length === 4) {
       const forward = v3(0, -1, 0).applyQuaternion(new THREE.Quaternion(rotation[1], rotation[2], rotation[3], rotation[0]).normalize());
       f.root.rotation.set(0, Math.atan2(forward.x, -forward.y), 0);
+    } else if (Number.isFinite(spawn?.yaw)) {
+      f.root.rotation.set(0, spawn.yaw, 0);
     }
     const ground = this._ground(p.x, p.z, p.y + 3);
     if (ground) f.root.position.y = ground.point.y + .015;
@@ -640,7 +650,7 @@ export class MeteorGame {
     // Its final authored segment still uses action physics; state0/1 keeps
     // the resulting current velocity rather than restoring old locomotion.
     if(actionMotion&&!f.combat.busy){f.velocity.copy(f.motionVelocity);f.actionMomentum=null;f.nativeAirGroundContact=false;}
-    if (p.y < this.currentMap.bounds.min.y - 20 || Math.abs(p.x) > 3000 || Math.abs(p.z) > 3000) { if (this.mode === 'story'||this.networkCombat) { f.hp = 0; this._kill(f,{awardKill:false}); } else this._placeFighter(f, this.currentMap.spawns[f.hero ? 0 : (f.spawnIndex || 1) % this.currentMap.spawns.length]); }
+    if (p.y < this.currentMap.bounds.min.y - 20 || Math.abs(p.x) > 3000 || Math.abs(p.z) > 3000) { if (this.mode === 'story'||this.networkCombat) { f.hp = 0; this._kill(f,{awardKill:false}); } else this._placeFighter(f, f.trainingSpawn ?? this.currentMap.spawns[f.hero ? 0 : (f.spawnIndex || 1) % this.currentMap.spawns.length]); }
   }
   _captureActionMomentum(actor,{ninja=false}={}){
     actor.standingTurn=null;
@@ -716,7 +726,7 @@ export class MeteorGame {
     this.scene.add(this.hero.root);
     this._placeFighter(this.hero, this.currentMap.spawns[0]);
   }
-  async start({ map, weapon = 'sword', difficulty = 'normal', character = 0, characterAppearance = Number(character) === 0 ? DEFAULT_CHARACTER_APPEARANCE : 'original', mode = 'training', lowBandwidth = false } = {}) {
+  async start({ map, weapon = 'sword', difficulty = 'normal', character = 0, characterAppearance = Number(character) === 0 ? DEFAULT_CHARACTER_APPEARANCE : 'original', mode = 'training', lowBandwidth = false, enemyCount } = {}) {
     map ??= mode === 'training' ? QIYUN_MAP.id : 'sifang';
     if (mode === 'story') {
       const mission = getNativeMission(map);
@@ -745,9 +755,12 @@ export class MeteorGame {
       if (request !== this.sessionRequest || this.disposed) { host.dispose(); return; }
     } else {
       this._loadStatus(mode === 'network' ? '正在准备联机装备…' : '正在载入兵器和演武对手…', 2);
-      this.weapon = NATIVE_WEAPONS[weapon] ? weapon : 'sword'; await this._equip(this.hero, this.weapon); this._placeFighter(this.hero, this.currentMap.spawns[0]);
+      this.weapon = NATIVE_WEAPONS[weapon] ? weapon : 'sword';
+      await this._equip(this.hero, this.weapon);
+      if (request !== this.sessionRequest || this.disposed) return;
+      this._placeFighter(this.hero, this.currentMap.spawns[0]);
       if (mode !== 'network') {
-        await this._spawnTrainingOpponents(request, lowBandwidth);
+        await this._spawnTrainingOpponents(request, lowBandwidth, trainingEnemyCount(enemyCount));
       }
     }
     if (request !== this.sessionRequest || this.disposed) return;
@@ -756,31 +769,115 @@ export class MeteorGame {
     this.cameraTarget.copy(this.hero.root.position).add(v3(0, 1.5, 0)); this._tickCamera(1); this._unlockAudio();
     this._emit(this.mode === 'story' ? `原版${this.currentMap.entry.name || this.currentMap.id}` : '原版动作演练开始', 'info'); this._hud();
   }
-  async _spawnTrainingOpponents(request, lowBandwidth = false) {
-    const appearances = FEATURED_APPEARANCES.filter(id => id !== this.hero.character.appearance).slice(0, 3);
-    const opponents = lowBandwidth
-      ? [1, 2, 3, 4].filter(id => id !== this.hero.modelId).slice(0, 3).map(id => [id, 'original'])
-      : appearances.map(id => [NATIVE_APPEARANCES[id].characterId, id]);
-    const results = await Promise.allSettled(opponents.map(([id, appearance]) => this._createFighter(id, null, false, 2, appearance)));
-    const actors = results.filter(result => result.status === 'fulfilled').map(result => result.value);
-    const failure = results.find(result => result.status === 'rejected');
-    if (failure || request !== this.sessionRequest || this.disposed) {
-      for (const actor of actors) { actor.disposed = true; this._disposeNameplate(actor); actor.character.dispose(); }
-      if (failure && request === this.sessionRequest && !this.disposed) throw failure.reason;
-      return;
+  _trainingSpawnPoints(count) {
+    const hero = this.hero.root.position, map = this.currentMap;
+    const candidates = map.spawns.slice(1).map((spawn, i) => ({ ...spawn, index: i + 1 }));
+    const chosen = [];
+    const clearance = spawn => Math.min(flatDistance(spawn.position, hero),
+      ...chosen.map(point => flatDistance(spawn.position, point.position)));
+    const select = (minimum, maxFromPlayer = Infinity) => {
+      while (chosen.length < count) {
+        let best = -1, largestGap = minimum;
+        for (const [i, spawn] of candidates.entries()) {
+          if (flatDistance(spawn.position, hero) > maxFromPlayer) continue;
+          const gap = clearance(spawn);
+          if (gap > largestGap) { best = i; largestGap = gap; }
+        }
+        if (best < 0) break;
+        chosen.push(candidates.splice(best, 1)[0]);
+      }
+    };
+    const addGroundPoint = ({ x, y, z }) => {
+      const floor = this._ground(x, z, y + this.hostPhysics.step);
+      if (!floor || y - floor.point.y > 1.25) return;
+      const position = floor.point.clone();
+      // Probes around the footprint rule out ledges and holes below the actor.
+      const radius = this.hostPhysics.radius;
+      for (const [dx, dz] of [[radius, 0], [-radius, 0], [0, radius], [0, -radius]]) {
+        const edge = this._ground(x + dx, z + dz, position.y + this.hostPhysics.step);
+        if (!edge || Math.abs(edge.point.y - position.y) > this.hostPhysics.step ||
+            this._horizontalBlocked(position, dx, dz)) return;
+      }
+      candidates.push({ position });
+    };
+
+    const addRing = radius => {
+      for (let i = 0; i < 12; i++) {
+        const angle = i * Math.PI / 6;
+        addGroundPoint(v3(hero.x + Math.cos(angle) * radius, hero.y, hero.z + Math.sin(angle) * radius));
+      }
+    };
+    // Stay within ordinary sight range when the terrain gives us room.
+    // The farthest authored starts on large maps can be several rooms away.
+    const preferredGap = NATIVE_AWARENESS.nearby;
+    const viewRange = NATIVE_AWARENESS.defaultView * SCALE;
+    select(preferredGap, viewRange);
+    if (chosen.length < count) {
+      for (const point of map.points || []) addGroundPoint(point.position);
+      for (const radius of [8, 12, 16, 24]) {
+        addRing(radius);
+        select(preferredGap, viewRange);
+        if (chosen.length === count) break;
+      }
     }
-    const heroPos = this.hero.root.position;
-    const spawns = this.currentMap.spawns;
-    const ordered = spawns.map((spawn, i) => ({ ...spawn, index: i })).filter(spawn => flatDistance(spawn.position, heroPos) > 4).sort((a, b) => flatDistance(a.position, heroPos) - flatDistance(b.position, heroPos));
-    await Promise.all(actors.map(async (actor, i) => {
-      const spawn = ordered[i] || spawns[(i + 1) % spawns.length];
-      actor.spawnIndex = spawn.index ?? i + 1;
+    for (const radius of [viewRange * 1.5, viewRange * 2, viewRange * 3, Infinity]) {
+      if (chosen.length === count) break;
+      select(preferredGap, radius);
+    }
+    if (chosen.length < count) {
+      select(2);
+      for (const radius of [6, 4, 2.5]) {
+        if (chosen.length === count) break;
+        addRing(radius);
+        select(2);
+      }
+    }
+    if (chosen.length !== count) throw new Error('当前战场没有足够的安全出生点，请减少演武敌人数。');
+
+    // Keep DES facing. On maps without it, the remaining opponents look
+    // outward and use the normal discovery rules when the player approaches.
+    return chosen.map((spawn, i) => spawn.rotation ? spawn : {
+      ...spawn, yaw: i === 0 ? 0 : Math.atan2(spawn.position.x - hero.x, spawn.position.z - hero.z)
+    });
+  }
+  async _spawnTrainingOpponents(request, lowBandwidth, count) {
+    const spawns = this._trainingSpawnPoints(count);
+    const originals = sampleOpponents(NATIVE_CHARACTERS.filter(c => c.id !== this.hero.modelId), count);
+    const appearances = lowBandwidth ? [] : sampleOpponents(
+      FEATURED_APPEARANCES.filter(id => id !== this.hero.character.appearance), count);
+    const actors = [];
+    const isCurrent = () => request === this.sessionRequest && !this.disposed;
+    const results = await Promise.allSettled(spawns.map(async (spawn, i) => {
+      const appearance = appearances[i];
+      let actor;
+      if (appearance) {
+        try {
+          actor = await this._createFighter(NATIVE_APPEARANCES[appearance].characterId, null, false, 2, appearance);
+        } catch (error) {
+          if (!isCurrent()) return;
+          console.warn('演武对手外观载入失败，改用原版人物：', error);
+        }
+      }
+      actor ??= await this._createFighter(originals[i].id, null, false, 2, 'original');
+      actors.push(actor);
+      if (!isCurrent()) return;
+      actor.trainingSpawn = spawn;
+      actor.spawnIndex = spawn.index;
       actor.slot = i;
       this._placeFighter(actor, spawn);
-      this.scene.add(actor.root);
-      this.enemies.push(actor);
-      await this._equip(actor, ['sword', 'blade', 'spear'][i]);
+      if (await this._equip(actor, TRAINING_WEAPONS[i % TRAINING_WEAPONS.length]) === false && isCurrent()) {
+        throw new Error('演武对手兵器未能载入');
+      }
+      return actor;
     }));
+    const failure = results.find(result => result.status === 'rejected');
+    if (failure || !isCurrent()) {
+      for (const actor of actors) { actor.disposed = true; this._disposeNameplate(actor); actor.character.dispose(); }
+      if (failure && isCurrent()) throw failure.reason;
+      return;
+    }
+    this.enemies = results.map(result => result.value);
+    for (const actor of this.enemies) this.scene.add(actor.root);
   }
   exitToMenu() {
     this.mouseLook?.release();
@@ -1132,7 +1229,7 @@ export class MeteorGame {
     updateNativeScriptItems(f, dt, result => this.onEvent?.({ type: 'item-tick', actorId: f.scriptId ?? f.id, ...result }), { time: this.elapsed });
     // 004affd0 handles periodic-stat death without an attacker/kill award.
     if (!f.dead && f.hp <= 0) this._kill(f, { awardKill: false });
-    if (f.dead) { const state = f.combat.update(dt); if (state) f.character.setPoseFrame(state.source, state.frame); f.respawn -= dt; if (f.respawn <= 0) this._placeFighter(f, this.currentMap.spawns[(f.spawnIndex||0)%this.currentMap.spawns.length]); return; }
+    if (f.dead) { const state = f.combat.update(dt); if (state) f.character.setPoseFrame(state.source, state.frame); f.respawn -= dt; if (f.respawn <= 0) this._placeFighter(f, f.trainingSpawn ?? this.currentMap.spawns[(f.spawnIndex||0)%this.currentMap.spawns.length]); return; }
     const npcDue = !control && f.npcCombat?.advance(dt, f.scriptConfig, {
       hasTarget: !!(f.scriptControl?.attackTarget || f.awarenessTarget), paused: !!f.scriptControl?.paused });
     // Only the two contacting actors pause; mission time, projectiles and
@@ -1188,7 +1285,7 @@ export class MeteorGame {
         if (distance > reach + .2) direction.copy(delta).normalize();
         else if (distance < reach - .45) { direction.copy(delta).normalize().negate(); speed *= .4; }
         if (distance < reach + 3 && !f.combat.busy) {
-          const angle = (f.slot || 0) * Math.PI * 2 / 3 + this.elapsed * .035;
+          const angle = (f.slot || 0) * Math.PI * 2 / this.enemies.length + this.elapsed * .035;
           const slot = target.root.position.clone().add(v3(Math.sin(angle) * reach, 0, Math.cos(angle) * reach)).sub(f.root.position); slot.y = 0;
           if (slot.length() > .7) direction.lerp(slot.normalize(), .55).normalize();
         }

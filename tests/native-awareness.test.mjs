@@ -3,7 +3,7 @@ import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from '../dist/vendor/three.module.js';
-import { nativeCanDiscover, findNativeEnemy } from '../dist/native-awareness.js';
+import { nativeCanDiscover, findNativeEnemy, NATIVE_AWARENESS } from '../dist/native-awareness.js';
 import { MeteorGame } from '../dist/engine.js';
 import { FEATURED_APPEARANCES, savedBattleCharacterSelection } from '../dist/character-appearances.js';
 import { loadNativeCombat, createNativeDamageResolver } from '../dist/native-combat.js';
@@ -99,21 +99,25 @@ after(async () => {
   }
 });
 
-test('actual training start with original四方阵 spawns wakes only the enemy that discovers the player and permits public combos', async t => {
+test('dispersed training spawns use discovery before chasing and leave room for public combos', async () => {
   const { game, events } = await fixture();
-  assert.deepEqual(game.enemies.map(actor => sourceSpawns[actor.spawnIndex].name), ['D_user09', 'D_user12', 'D_user05']);
+  assert.equal(game.enemies.length, 2);
+  assert.equal(new Set(game.enemies.map(actor => actor.spawnIndex)).size, 2);
+  const sight = (actor, target) => game.hasScriptLineOfSight(actor, target);
+  const discovered = game.enemies.map(actor => nativeCanDiscover(actor, game.hero, sight));
   const start = game.enemies.map(actor => actor.root.position.clone());
   for (let frame = 0; frame < 60; frame++) tick(game);
-  const moved = game.enemies.map((actor, index) => actor.root.position.distanceTo(start[index]));
-  assert.ok(moved[0] > 1); assert.ok(moved[1] < .01); assert.ok(moved[2] < .01);
-  assert.deepEqual(game.enemies.map(actor => !!actor.awarenessTarget), [true, false, false]);
+  game.enemies.forEach((actor, index) => {
+    const moved = actor.root.position.distanceTo(start[index]);
+    assert.ok(discovered[index] ? moved > 1 : moved < .01);
+  });
+  assert.deepEqual(game.enemies.map(actor => !!actor.awarenessTarget), discovered);
   game.action('attack'); assert.equal(game.hero.combat.timeline.pose.id, 262);
   for (let frame = 0; frame < 60 && !game.hero.combat.timeline.canCancel; frame++) tick(game);
   game.action('attack');
   for (let frame = 0; frame < 120 && game.hero.combat.timeline.pose.id !== 263; frame++) tick(game);
   assert.equal(game.hero.combat.timeline.pose.id, 263, 'ordinary AA input starts its real second source pose before unseen enemies can interrupt it');
   assert.equal(events.filter(event => event.type === 'hit' && event.targetHero).length, 0);
-  t.diagnostic(`Source DES starts on a CPU floor with live NPC AI: displacement=${moved.map(n => n.toFixed(3))}; awareness=true,false,false; public262→263.`);
 });
 
 test('unseen training enemies cannot discover through real collision triangles and respawn clears their cached target', async () => {
@@ -125,29 +129,28 @@ test('unseen training enemies cannot discover through real collision triangles a
   assert.equal(actor.awarenessTarget, null); assert.ok(actor.root.position.distanceTo(start) < .01);
   game.currentMap.colliders.pop(); wall.geometry.dispose(); wall.material.dispose(); tick(game);
   assert.equal(actor.awarenessTarget, game.hero);
-  game._placeFighter(actor, sourceSpawns[actor.spawnIndex]); assert.equal(actor.awarenessTarget, null);
-  assert.equal(actor.root.rotation.y, 0); tick(game); assert.equal(actor.awarenessTarget, null);
+  game._placeFighter(actor, actor.trainingSpawn); assert.equal(actor.awarenessTarget, null);
+  const canDiscover = nativeCanDiscover(actor, game.hero, (a, b) => game.hasScriptLineOfSight(a, b));
+  tick(game); assert.equal(!!actor.awarenessTarget, canDiscover);
 });
 
-test('original四方阵 geometry and normal start preserve discovery-gated live AI rather than an opening three-enemy rush', async t => {
+test('original四方阵 starts with the new default appearance and two distinct distant opponents', async () => {
   const { game } = await fixture({ originalMap: true });
   assert.ok(game.currentMap.colliders.length > 0); assert.ok(game.currentMap.props);
-  assert.equal(game.hero.character.appearance, 'liuchao');
-  assert.equal(game.hero.name, '琉潮');
-  assert.equal(new Set(game.enemies.map(actor => actor.character.appearance)).size, 3);
+  assert.equal(game.hero.character.appearance, 'liuchao-mint');
+  assert.equal(game.hero.name, '琉潮-换装二');
+  assert.equal(game.enemies.length, 2);
+  assert.equal(new Set(game.enemies.map(actor => actor.character.appearance)).size, 2);
   assert.ok(game.enemies.every(actor => FEATURED_APPEARANCES.includes(actor.character.appearance)));
-
-  const start = game.enemies.map(actor => actor.root.position.clone());
+  assert.ok(game.enemies.every(actor => actor.character.appearance !== game.hero.character.appearance));
+  for (const actor of game.enemies) assert.ok(actor.root.position.distanceTo(game.hero.root.position) > NATIVE_AWARENESS.nearby);
+  assert.ok(game.enemies[0].root.position.distanceTo(game.enemies[1].root.position) > NATIVE_AWARENESS.nearby);
   for (let frame = 0; frame < 60; frame++) tick(game);
-  const moved = game.enemies.map((actor, index) => actor.root.position.distanceTo(start[index]));
-  assert.equal(game.enemies.filter(actor => actor.awarenessTarget === game.hero).length, 1);
-  assert.ok(moved[0] > 1); assert.ok(moved[1] < .01); assert.ok(moved[2] < .01);
   assert.equal(game.hero.hp, game.hero.maxHp);
-  t.diagnostic(`Originalsn06 model/colliders/spawns plus live AI: displacement=${moved.map(n => n.toFixed(3))}; one enemy discovers the player, two remain unaware. CPU; no browser rendering.`);
 });
 
-test('an old default or retired character migrates to Liu Chao, while explicit original choices persist', () => {
-  const defaultChoice = { character: 0, characterAppearance: 'liuchao' };
+test('an old default or retired character migrates to Liu Chao outfit two, while explicit original choices persist', () => {
+  const defaultChoice = { character: 0, characterAppearance: 'liuchao-mint' };
   assert.deepEqual(savedBattleCharacterSelection({ character: 0, characterAppearance: 'original' }), defaultChoice);
   assert.deepEqual(savedBattleCharacterSelection({ character: 0, characterAppearance: 'hd', characterSelected: true }), defaultChoice);
   assert.deepEqual(savedBattleCharacterSelection({ character: 0, characterAppearance: 'original', characterSelected: true }), { character: 0, characterAppearance: 'original' });

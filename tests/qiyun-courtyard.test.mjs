@@ -37,6 +37,21 @@ test('the shipped map has usable spawns and continuous ground across the entire 
   }
 });
 
+test('栖云古庭 can spread six opponents across distinct grounded starts', () => {
+  const [player] = game.currentMap.spawns;
+  game.hero = { root: { position: player.position } };
+  const starts = game._trainingSpawnPoints(6);
+  assert.equal(starts.length, 6);
+  assert.ok(starts.some(spawn => spawn.index === undefined), 'augment the five authored opponent spawns');
+  for (const [i, spawn] of starts.entries()) {
+    const { x, y, z } = spawn.position;
+    const floor = game._ground(x, z, y + 1);
+    assert.ok(floor && Math.abs(floor.point.y - y) < .1);
+    assert.ok(Math.hypot(x - player.position.x, z - player.position.z) > 6.4);
+    for (const other of starts.slice(0, i)) assert.ok(Math.hypot(x - other.position.x, z - other.position.z) > 6.4);
+  }
+});
+
 test('real movement crosses slab seams and the north approach without getting stuck or falling', () => {
   const actor = {root:new THREE.Group(),velocity:v(),vy:0,grounded:true,combat:{busy:false}};
   actor.root.position.set(0,.78,10);

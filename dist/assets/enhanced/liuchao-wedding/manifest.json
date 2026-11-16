@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "characterId": 0,
+  "appearance": "liuchao-wedding",
+  "label": "琉潮-换装三",
+  "mesh": "mesh.json",
+  "complete": true,
+  "completeness": {
+    "bodyGeometry": true,
+    "headHairGeometry": true,
+    "eyes": true,
+    "faceGeometry": true,
+    "sourcePmxSkeleton": false,
+    "originalSourceGameSkeleton": false,
+    "scalpGeometry": true
+  },
+  "stats": {
+    "vertices": 128512,
+    "triangles": 200910,
+    "sourceBones": 434,
+    "bones": 30,
+    "dummies": 6,
+    "secondaryBones": 0,
+    "materials": 18,
+    "textures": 8
+  },
+  "retarget": {
+    "method": "Source-length skeleton with native animation rotations; evaluated Blender objects, uniform scale and reduced body mesh.",
+    "provisional": true,
+    "hairPhysics": false,
+    "clothPhysics": false
+  },
+  "provenance": {
+    "sourceArchive": "assets/source/liuchao/琉潮.blend",
+    "limits": [
+      "Body mesh reduced for runtime; Blender procedural materials approximated.",
+      "Hair and clothing follow bones; no secondary physics or expression morphs."
+    ],
+    "scalpSource": "assets/source/liuchao/琉潮-修复版.blend",
+    "outfitArchive": "assets/source/odette-wedding",
+    "outfitArtist": "ArmpitBelly",
+    "baseAppearance": "liuchao",
+    "baseMeshSha256": "364ff77b9684bfc61c95b85183e7dd18597484cdcb61f0f41e968cd1ae781317"
+  },
+  "sourceFiles": [
+    {
+      "file": "OdetteBangHairADiffuse.dds",
+      "sha256": "05e1e40ae98031a5bbc066cbfdafa80b1d8abed0fc0e8c047b4e903a174a3f66",
+      "bytes": 16777364
+    },
+    {
+      "file": "OdetteBodyA.ib",
+      "sha256": "c417af7b858c9b13e6c34a3bcf183f5c50b82b11ee78d95fbc62180b5ae3d8cb",
+      "bytes": 78396
+    },
+    {
+      "file": "OdetteBodyB.ib",
+      "sha256": "08dcaae18fb3963543aa1d73b6f9d02621bfceb983c6ed7272ff8cb9de18bf06",
+      "bytes": 1099908
+    },
+    {
+      "file": "OdetteBodyBDiffuse.dds",
+      "sha256": "5b8cd3aacc92b4d55c3fad1d9f73986d78292d1da14c9fdc774a594f380bc7c6",
+      "bytes": 16777364
+    },
+    {
+      "file": "OdetteBodyD.ib",
+      "sha256": "022e5b12d09251ce4c39fb8776cde480f16c9e4e50b349c514982e4c11c42c00",
+      "bytes": 1014288
+    },
+    {
+      "file": "OdetteBodyDDiffuse.dds",
+      "sha256": "56266b401db812de936c30571a7268b3b556a38b5b0f071a4a671eb95305db06",
+      "bytes": 16777364
+    },
+    {
+      "file": "OdetteBodyPosition.buf",
+      "sha256": "9cecbda453262ded1b18f73db269b1aa6971db4bb901ed19c1da7eeaa5d6d1f4",
+      "bytes": 5099560
+    },
+    {
+      "file": "OdetteBodyTexcoord.buf",
+      "sha256": "4ffb8110d39ec3e07e999f78cde4cf6c0f6d3ab688b3012d1ea5dc4d37714506",
+      "bytes": 3569692
+    },
+    {
+      "file": "Odette_Virgin_Bride_Wedding_Mod_NANAS_p_updated_v2.ini",
+      "sha256": "14099f9a81d6be6809525755b4a89caba9cb08df2d906cfada03db8883ee25ed",
+      "bytes": 14801
+    },
+    {
+      "file": "help.txt",
+      "sha256": "8e3b76a0a6935ab49d44dc9c6449d24ce14629a3ccf85298f92c364188b253ad",
+      "bytes": 356
+    },
+    {
+      "file": "preview.png",
+      "sha256": "3768ee50b4834592adce29fe802bcef4655dde2b3805453e96365c77386ae68a",
+      "bytes": 4421557
+    }
+  ]
+}

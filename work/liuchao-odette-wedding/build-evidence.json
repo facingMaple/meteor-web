@@ -1,0 +1,433 @@
+{
+  "parts": [
+    {
+      "name": "官方面部 · 眼睛与表情形态键",
+      "sourceVertices": 2081,
+      "runtimeVertices": 2081,
+      "triangles": 3096
+    },
+    {
+      "name": "左手 · 官方网格与手指权重",
+      "sourceVertices": 866,
+      "runtimeVertices": 866,
+      "triangles": 1289
+    },
+    {
+      "name": "右手 · 对侧手指权重",
+      "sourceVertices": 866,
+      "runtimeVertices": 866,
+      "triangles": 1289
+    },
+    {
+      "name": "身体 · 连续曲面",
+      "sourceVertices": 88878,
+      "runtimeVertices": 38132,
+      "triangles": 76260
+    },
+    {
+      "name": "官方短发 · 镜像刘海",
+      "sourceVertices": 3888,
+      "runtimeVertices": 3888,
+      "triangles": 4498
+    },
+    {
+      "name": "低束马尾 · 发束",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.001",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.002",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.003",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.004",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.005",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.006",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.007",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.008",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.009",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.010",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "鬓边青色发梢",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.001",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.002",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.003",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.004",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.005",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "马尾 · 淡金束环",
+      "sourceVertices": null,
+      "runtimeVertices": 1536,
+      "triangles": 3072
+    },
+    {
+      "name": "马尾 · 青色结带",
+      "sourceVertices": null,
+      "runtimeVertices": 104,
+      "triangles": 192
+    },
+    {
+      "name": "马尾 · 垂带",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "马尾 · 青色结带.001",
+      "sourceVertices": null,
+      "runtimeVertices": 104,
+      "triangles": 192
+    },
+    {
+      "name": "马尾 · 垂带.001",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "上衣 · 右杯片",
+      "sourceVertices": 152,
+      "runtimeVertices": 1110,
+      "triangles": 2216
+    },
+    {
+      "name": "上衣 · 左杯片",
+      "sourceVertices": 152,
+      "runtimeVertices": 1110,
+      "triangles": 2216
+    },
+    {
+      "name": "上衣 · 背带",
+      "sourceVertices": 75,
+      "runtimeVertices": 490,
+      "triangles": 976
+    },
+    {
+      "name": "后脑 · 原始头皮",
+      "sourceVertices": 468,
+      "runtimeVertices": 2610,
+      "triangles": 870
+    },
+    {
+      "name": "婚纱 · 主体",
+      "runtimeVertices": 4753,
+      "triangles": 6068
+    },
+    {
+      "name": "右侧裙饰",
+      "runtimeVertices": 6503,
+      "triangles": 7314
+    },
+    {
+      "name": "长裙摆",
+      "runtimeVertices": 3183,
+      "triangles": 5034
+    },
+    {
+      "name": "前侧裙饰",
+      "runtimeVertices": 2342,
+      "triangles": 2585
+    },
+    {
+      "name": "左侧裙饰",
+      "runtimeVertices": 8389,
+      "triangles": 9236
+    },
+    {
+      "name": "腿饰",
+      "runtimeVertices": 6453,
+      "triangles": 9874
+    },
+    {
+      "name": "长手套",
+      "runtimeVertices": 3246,
+      "triangles": 4852
+    },
+    {
+      "name": "手臂花饰",
+      "runtimeVertices": 2254,
+      "triangles": 2847
+    },
+    {
+      "name": "头冠",
+      "runtimeVertices": 7278,
+      "triangles": 9105
+    },
+    {
+      "name": "头纱",
+      "runtimeVertices": 3994,
+      "triangles": 4354
+    },
+    {
+      "name": "左鞋",
+      "runtimeVertices": 1960,
+      "triangles": 3176
+    },
+    {
+      "name": "右鞋",
+      "runtimeVertices": 6653,
+      "triangles": 11002
+    },
+    {
+      "name": "天鹅胸饰",
+      "runtimeVertices": 174,
+      "triangles": 166
+    },
+    {
+      "name": "胸前饰带",
+      "runtimeVertices": 2024,
+      "triangles": 1904
+    },
+    {
+      "name": "腹前花饰",
+      "runtimeVertices": 1307,
+      "triangles": 920
+    },
+    {
+      "name": "侧边发饰",
+      "runtimeVertices": 2024,
+      "triangles": 1904
+    },
+    {
+      "name": "长袜",
+      "runtimeVertices": 1423,
+      "triangles": 2563
+    },
+    {
+      "name": "耳饰",
+      "runtimeVertices": 288,
+      "triangles": 112
+    },
+    {
+      "name": "胸针",
+      "runtimeVertices": 112,
+      "triangles": 44
+    },
+    {
+      "name": "背饰",
+      "runtimeVertices": 645,
+      "triangles": 564
+    }
+  ],
+  "sourceDraws": [
+    {
+      "part": "婚纱 · 主体",
+      "atlas": "D",
+      "firstIndex": 0,
+      "indexCount": 18204,
+      "exportedTriangles": 6068
+    },
+    {
+      "part": "右侧裙饰",
+      "atlas": "D",
+      "firstIndex": 44937,
+      "indexCount": 21942,
+      "exportedTriangles": 7314
+    },
+    {
+      "part": "长裙摆",
+      "atlas": "D",
+      "firstIndex": 66879,
+      "indexCount": 15102,
+      "exportedTriangles": 5034
+    },
+    {
+      "part": "前侧裙饰",
+      "atlas": "D",
+      "firstIndex": 81981,
+      "indexCount": 7755,
+      "exportedTriangles": 2585
+    },
+    {
+      "part": "左侧裙饰",
+      "atlas": "D",
+      "firstIndex": 89736,
+      "indexCount": 27708,
+      "exportedTriangles": 9236
+    },
+    {
+      "part": "腿饰",
+      "atlas": "D",
+      "firstIndex": 117444,
+      "indexCount": 29622,
+      "exportedTriangles": 9874
+    },
+    {
+      "part": "长手套",
+      "atlas": "D",
+      "firstIndex": 147066,
+      "indexCount": 14556,
+      "exportedTriangles": 4852
+    },
+    {
+      "part": "手臂花饰",
+      "atlas": "D",
+      "firstIndex": 161622,
+      "indexCount": 8541,
+      "exportedTriangles": 2847
+    },
+    {
+      "part": "头冠",
+      "atlas": "D",
+      "firstIndex": 170163,
+      "indexCount": 27315,
+      "exportedTriangles": 9105
+    },
+    {
+      "part": "头纱",
+      "atlas": "D",
+      "firstIndex": 197478,
+      "indexCount": 13062,
+      "exportedTriangles": 4354
+    },
+    {
+      "part": "左鞋",
+      "atlas": "D",
+      "firstIndex": 210540,
+      "indexCount": 9528,
+      "exportedTriangles": 3176
+    },
+    {
+      "part": "右鞋",
+      "atlas": "D",
+      "firstIndex": 220068,
+      "indexCount": 33006,
+      "exportedTriangles": 11002
+    },
+    {
+      "part": "天鹅胸饰",
+      "atlas": "D",
+      "firstIndex": 253074,
+      "indexCount": 498,
+      "exportedTriangles": 166
+    },
+    {
+      "part": "胸前饰带",
+      "atlas": "B",
+      "firstIndex": 266505,
+      "indexCount": 5712,
+      "exportedTriangles": 1904
+    },
+    {
+      "part": "腹前花饰",
+      "atlas": "B",
+      "firstIndex": 272217,
+      "indexCount": 2760,
+      "exportedTriangles": 920
+    },
+    {
+      "part": "侧边发饰",
+      "atlas": "B",
+      "firstIndex": 260793,
+      "indexCount": 5712,
+      "exportedTriangles": 1904
+    },
+    {
+      "part": "长袜",
+      "atlas": "B",
+      "firstIndex": 110109,
+      "indexCount": 76266,
+      "exportedTriangles": 2563
+    },
+    {
+      "part": "耳饰",
+      "atlas": "A",
+      "firstIndex": 0,
+      "indexCount": 336,
+      "exportedTriangles": 112
+    },
+    {
+      "part": "胸针",
+      "atlas": "A",
+      "firstIndex": 17775,
+      "indexCount": 132,
+      "exportedTriangles": 44
+    },
+    {
+      "part": "背饰",
+      "atlas": "A",
+      "firstIndex": 17907,
+      "indexCount": 1692,
+      "exportedTriangles": 564
+    }
+  ],
+  "meshSha256": "e0e5c71306b4789d72ecc1815f659fa0b795219335b6afe030a125c4b3c32145"
+}

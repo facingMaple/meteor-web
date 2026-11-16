@@ -2,6 +2,8 @@ export const DEFAULT_CHARACTER_APPEARANCE = 'liuchao';
 export const NATIVE_APPEARANCES=Object.freeze({
   original:Object.freeze({id:'original',label:'原版人物',characterId:null}),
   liuchao:Object.freeze({id:'liuchao',label:'琉潮 · 原创角色',characterId:0,assetPath:'./assets/enhanced/liuchao/'}),
+  'liuchao-mint':Object.freeze({id:'liuchao-mint',label:'琉潮-换装二',characterId:0,assetPath:'./assets/enhanced/liuchao-mint/'}),
+  'liuchao-wedding':Object.freeze({id:'liuchao-wedding',label:'琉潮-换装三',characterId:0,assetPath:'./assets/enhanced/liuchao-wedding/'}),
   hutao:Object.freeze({id:'hutao',label:'YS-胡桃 · 模型适配',characterId:0,assetPath:'./assets/enhanced/hutao/'}),
   doubao:Object.freeze({id:'doubao',label:'豆包 · 模型适配',characterId:0,assetPath:'./assets/enhanced/doubao/'}),
   springfield:Object.freeze({id:'springfield',label:'春田 · 泳装P3',characterId:0,assetPath:'./assets/enhanced/springfield/'}),

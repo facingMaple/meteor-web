@@ -27,6 +27,12 @@
     </section>
     <div class="details"><p><span class="dot"></span>保留原版骨架与武器挂点<span class="dot"></span>相同灯光与曝光<span class="dot"></span>可编辑 Blender 源文件</p><p id="appearance-note">查看精选人物在原版动作中的外观。</p></div>
   </main>
-  <script type="module" src="./character-compare.js"></script>
+  <script type="importmap">
+    {"imports":{
+      "./character-appearances.js":"./character-appearances.js?v=20261116-outfits",
+      "./character-catalog.js":"./character-catalog.js?v=20261116-outfits"
+    }}
+  </script>
+  <script type="module" src="./character-compare.js?v=20261116-outfits"></script>
 </body>
 </html>

@@ -1,0 +1,92 @@
+{
+  "schema": 1,
+  "characterId": 0,
+  "appearance": "liuchao-mint",
+  "label": "琉潮-换装二",
+  "mesh": "mesh.json",
+  "complete": true,
+  "completeness": {
+    "bodyGeometry": true,
+    "headHairGeometry": true,
+    "eyes": true,
+    "faceGeometry": true,
+    "sourcePmxSkeleton": false,
+    "originalSourceGameSkeleton": false,
+    "scalpGeometry": true
+  },
+  "stats": {
+    "vertices": 100787,
+    "triangles": 173676,
+    "sourceBones": 434,
+    "bones": 30,
+    "dummies": 6,
+    "secondaryBones": 0,
+    "materials": 20,
+    "textures": 8
+  },
+  "retarget": {
+    "method": "Source-length skeleton with native animation rotations; evaluated Blender objects, uniform scale and reduced body mesh.",
+    "provisional": true,
+    "hairPhysics": false,
+    "clothPhysics": false
+  },
+  "provenance": {
+    "sourceArchive": "assets/source/liuchao/琉潮.blend",
+    "limits": [
+      "Body mesh reduced for runtime; Blender procedural materials approximated.",
+      "Hair and clothing follow bones; no secondary physics or expression morphs."
+    ],
+    "scalpSource": "assets/source/liuchao/琉潮-修复版.blend",
+    "outfitArchive": "assets/source/vesna-mint-swimwear",
+    "baseAppearance": "liuchao",
+    "baseMeshSha256": "364ff77b9684bfc61c95b85183e7dd18597484cdcb61f0f41e968cd1ae781317",
+    "outfit": "Vesna XXMI mint swimsuit fitted to Liuchao, with white bottom fabric and the cape ties removed."
+  },
+  "sourceFiles": [
+    {
+      "file": "Preview.jpg",
+      "bytes": 187670,
+      "sha256": "eac355467ac40348e524080041ac982307801325d004da100fa8e3ccaf401725"
+    },
+    {
+      "file": "Vesna.ini",
+      "bytes": 6942,
+      "sha256": "e006df89840b3617856b9c312695c9ce7fc3cd1c4936990ec36e623969d55e7c"
+    },
+    {
+      "file": "VesnaBodyB.ib",
+      "bytes": 817488,
+      "sha256": "b6fec0eaec649c8e003097b7de5e527f5475a2dde0be42d814fbddb1ccc35328"
+    },
+    {
+      "file": "VesnaBodyBlend.buf",
+      "bytes": 2786240,
+      "sha256": "9500444f49f5da490cc850c9bc5b2d10d12aa1b4fbea87027421d87b5c97030b"
+    },
+    {
+      "file": "VesnaBodyD.ib",
+      "bytes": 784632,
+      "sha256": "2cd676488c1342efff364aef015749b7148da4f129330ab6d3c3f7bdc089fdbd"
+    },
+    {
+      "file": "VesnaBodyDDiffuse.dds",
+      "bytes": 16777364,
+      "sha256": "a0b4181536c388c8f302aea80c55a359171f44468fcf2116d0181ef70aadba25"
+    },
+    {
+      "file": "VesnaBodyPosition.buf",
+      "bytes": 3482800,
+      "sha256": "8a08b3c41f490c2eb042780f9ad5faebf61c5375d113a1eba01c7aa85442bd1c"
+    },
+    {
+      "file": "VesnaBodyTexcoord.buf",
+      "bytes": 2437960,
+      "sha256": "0a6ad8557acc3608e67e023e0e5f3d7706bb92b433d1b65588cf94c4cb54ef16"
+    },
+    {
+      "file": "mask.dds",
+      "bytes": 16777364,
+      "sha256": "46ca488b5a09155b61b6dfeddd84c8d70b69e9145838a453358925e73a9cb8b5"
+    }
+  ]
+}

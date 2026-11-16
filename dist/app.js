@@ -28,10 +28,10 @@ const maps={sifang:{name:'四方阵',english:'THE FOUR SQUARES',poem:'方寸之�
 maps[QIYUN_MAP.id] = QIYUN_MAP;
 for(const mission of NATIVE_MISSIONS)maps[mission.mapId]={name:mission.name,english:'ORIGINAL MISSION · '+mission.id.toUpperCase(),poem:'原版单机任务'};
 const weapons=NATIVE_WEAPON_MENU;
-let prefs={showFps:false,weapon:'sword',map:'sifang',character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',mission:'sn01',completedMissions:[],difficulty:'normal',infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
-try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');for(const k of ['showFps','weapon','map','character','characterAppearance','characterSelected','swordStyle','spearStyle','mission','completedMissions','difficulty','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];}catch{}
+let prefs={showFps:false,weapon:'sword',map:QIYUN_MAP.id,character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',mission:'sn01',completedMissions:[],difficulty:'normal',infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
+try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');for(const k of ['showFps','weapon','character','characterAppearance','characterSelected','swordStyle','spearStyle','mission','completedMissions','difficulty','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];}catch{}
 
-if(!maps[prefs.map]){if(/^sn\d{2}$/.test(prefs.map))maps[prefs.map]={name:prefs.map.toUpperCase(),english:'ORIGINAL MAP',poem:'原版战场'};else prefs.map='sifang';}if(!weapons[prefs.weapon])prefs.weapon='sword';if(!['normal','hard'].includes(prefs.difficulty))prefs.difficulty='normal';if(!['low','high'].includes(prefs.quality))prefs.quality='high';
+if(!weapons[prefs.weapon])prefs.weapon='sword';if(!['normal','hard'].includes(prefs.difficulty))prefs.difficulty='normal';if(!['low','high'].includes(prefs.quality))prefs.quality='high';
 Object.assign(prefs, savedBattleCharacterSelection(prefs));
 if(!Object.hasOwn(swordStyleNames,prefs.swordStyle))prefs.swordStyle='butterfly';
 if(!['original','phoenix'].includes(prefs.spearStyle))prefs.spearStyle='original';
@@ -45,7 +45,7 @@ if (linkedAppearance !== null) {
   appearanceURL.searchParams.delete('appearance');
   history.replaceState(null, '', appearanceURL.pathname + appearanceURL.search + appearanceURL.hash);
 }
-const save=()=>{try{localStorage.setItem('meteor-web-original-v2',JSON.stringify(prefs));}catch{}};
+const save=()=>{try{const {map, ...savedPrefs}=prefs; localStorage.setItem('meteor-web-original-v2',JSON.stringify(savedPrefs));}catch{}};
 if(!getNativeMission(prefs.mission))prefs.mission='sn01';
 prefs.completedMissions=NATIVE_MISSIONS.filter(m=>Array.isArray(prefs.completedMissions)&&prefs.completedMissions.includes(m.id)).map(m=>m.id);
 let currentMode='training',currentMissionId=prefs.mission,currentLowBandwidth=false;
@@ -275,7 +275,6 @@ function mapsHTML(){return header('CHOOSE YOUR BATTLEGROUND','选择战场','选
 function selectMap(id) {
   if (running || loadingMatch || !Object.hasOwn(maps, id) || maps[id].available === false) return;
   prefs.map = id;
-  save();
   if (modal.open) { modal.close(); modalKind = ''; priorFocus?.focus?.(); }
   updateSelection();
   syncScenery();
@@ -364,11 +363,13 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
   if (currentMode === 'story' && !mission) { toast('这段原版任务尚未开放'); return; }
   if (mission) { currentMissionId = mission.id; prefs.mission = mission.id; save(); }
   const map = mission?.mapId ?? (currentMode === 'network' ? 'sifang' : prefs.map);
+  const mapName = mission?.name || maps[map]?.name || map;
   const selection = battleCharacterSelection(currentMode === 'network' ? roomSelection : prefs);
   const weapon = currentMode === 'network' ? 'sword' : prefs.weapon;
   const canLock = !matchMedia('(pointer:coarse)').matches;
   if (canLock && navigator.userActivation?.isActive) game?.requestMouseLock();
   if (modal.open) modal.close();
+  $('#load-title').textContent = `正在准备「${mapName}」`;
   updateMatchLoad('正在准备游戏引擎和动作数据…', 0);
   matchLoading(true);
   releaseMenuSnapshots();
@@ -391,9 +392,9 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
     $('#lobby').classList.add('hidden');
     $('#game-hud').classList.remove('hidden');
     document.body.classList.add('playing');
-    $('#hud-map').textContent = (mission?.name || maps[map]?.name || map) + (currentMode === 'network' ? ' · 联机对战' : mission ? ' · 单机任务' : ' · 演武');
+    $('#hud-map').textContent = mapName + (currentMode === 'network' ? ' · 联机对战' : mission ? ' · 单机任务' : ' · 演武');
     $('#battle-hint-text').textContent = '原版招式演武 · 按 ' + keyHint('attack') + ' 出招';
-    updateMatchLoad('正在载入' + (mission?.name || maps[map]?.name || map) + '与人物动作…', 1);
+    updateMatchLoad(`正在载入${mapName}与人物动作…`, 1);
     await instance.start({ map, weapon, difficulty: prefs.difficulty, ...selection, mode: currentMode, lowBandwidth: currentLowBandwidth });
     if (!isCurrent()) return;
     updateMatchLoad('战场已就绪', 4);

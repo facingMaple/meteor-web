@@ -716,7 +716,8 @@ export class MeteorGame {
     this.scene.add(this.hero.root);
     this._placeFighter(this.hero, this.currentMap.spawns[0]);
   }
-  async start({ map = 'sifang', weapon = 'sword', difficulty = 'normal', character = 0, characterAppearance = Number(character) === 0 ? DEFAULT_CHARACTER_APPEARANCE : 'original', mode = 'training', lowBandwidth = false } = {}) {
+  async start({ map, weapon = 'sword', difficulty = 'normal', character = 0, characterAppearance = Number(character) === 0 ? DEFAULT_CHARACTER_APPEARANCE : 'original', mode = 'training', lowBandwidth = false } = {}) {
+    map ??= mode === 'training' ? QIYUN_MAP.id : 'sifang';
     if (mode === 'story') {
       const mission = getNativeMission(map);
       if (!mission) throw new Error(`Original story mission ${map} is not available yet`);

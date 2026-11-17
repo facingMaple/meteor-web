@@ -6,6 +6,15 @@
 
 <span style="color:red; font-style:italic;">(试玩地址的服务器带宽限制，首次加载较慢，下载源码本地启动秒加载)</span>
 
+
+![试玩演示 1](docs/readme-media/gif1.gif)
+
+![试玩演示 2](docs/readme-media/gif2.gif)
+
+![试玩演示 3](docs/readme-media/gif3.gif)
+
+![试玩演示 4](docs/readme-media/gif4.gif)
+
 ![试玩截图 1](docs/readme-media/screenshot1.webp)
 ![试玩截图 2](docs/readme-media/screenshot2.webp)
 ![试玩截图 3](docs/readme-media/screenshot3.webp)
@@ -15,15 +24,6 @@
 ![试玩截图 7](docs/readme-media/screenshot7.webp)
 ![试玩截图 8](docs/readme-media/screenshot8.webp)
 ![试玩截图 9](docs/readme-media/screenshot9.webp)
-
-
-![试玩演示 1](docs/readme-media/example1.gif)
-
-![试玩演示 2](docs/readme-media/example2.gif)
-
-![试玩演示 3](docs/readme-media/example3.gif)
-
-![试玩演示 4](docs/readme-media/example4.gif)
 
 
 

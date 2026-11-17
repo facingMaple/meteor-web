@@ -1,20 +1,30 @@
-# 流星蝴蝶剑.net Web 原版移植
+# 流星蝴蝶剑 ->  Web 原版移植
 
 **试玩地址：** [http://43.142.241.129/lx/](http://43.142.241.129/lx/)
 
 **试玩地址：** [https://linfengya.cn/lx/](https://linfengya.cn/lx/)
 
-![试玩截图 1](docs/readme-media/screenshot1.jpg)
+<span style="color:red; font-style:italic;">(试玩地址的服务器带宽限制，首次加载较慢，下载源码本地启动秒加载)</span>
 
-![试玩截图 2](docs/readme-media/screenshot2.jpg)
+![试玩截图 1](docs/readme-media/screenshot1.webp)
+![试玩截图 2](docs/readme-media/screenshot2.webp)
+![试玩截图 3](docs/readme-media/screenshot3.webp)
+![试玩截图 4](docs/readme-media/screenshot4.webp)
+![试玩截图 5](docs/readme-media/screenshot5.webp)
+![试玩截图 6](docs/readme-media/screenshot6.webp)
+![试玩截图 7](docs/readme-media/screenshot7.webp)
+![试玩截图 8](docs/readme-media/screenshot8.webp)
+![试玩截图 9](docs/readme-media/screenshot9.webp)
 
-![试玩截图 3](docs/readme-media/screenshot3.jpg)
 
-![试玩截图 4](docs/readme-media/screenshot4.jpg)
+![试玩演示 1](docs/readme-media/example1.gif)
 
-![试玩演示 1](docs/readme-media/gif1.gif)
+![试玩演示 2](docs/readme-media/example2.gif)
 
-![试玩演示 2](docs/readme-media/gif2.gif)
+![试玩演示 3](docs/readme-media/example3.gif)
+
+![试玩演示 4](docs/readme-media/example4.gif)
+
 
 
 基于用户本地 `lxhdj_` 客户端的浏览器移植，直接读取原版地图、人物、骨骼、动作、武器、配乐和任务脚本。Windows EXE 使用 Ghidra 离线反编译，已核实的气血、伤害和怒气公式已移入 JavaScript。

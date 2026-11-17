@@ -25,28 +25,41 @@ def main():
         for path in (ROOT / 'dist').rglob('*')
         if path.is_file() and path.name != '.DS_Store'
     }
-    for filename in ['server.mjs', 'network-server.mjs', '启动游戏.command', '停止游戏.command']:
+    for filename in ['server.mjs', 'network-server.mjs']:
         path = ROOT / filename
         if not path.is_file():
             raise FileNotFoundError(filename)
         runtime_files[filename] = path
+    launchers = sorted({*ROOT.glob('mac.*.command'), *ROOT.glob('windows.*.bat')}, key=lambda path: path.name)
+    if not any('启动游戏' in path.name for path in launchers):
+        raise FileNotFoundError('platform game launcher')
+    for path in launchers:
+        runtime_files[path.name] = path
     runtime_package = {
         'name': package['name'], 'version': package['version'],
         'private': True, 'type': 'module',
         'scripts': {'start': 'node server.mjs', 'dev': 'node server.mjs'},
     }
+    run_instructions = [
+        '流星蝴蝶剑 Web 本地运行包',
+        '',
+        '请先完整解压，再运行。需要 Node.js 20 或更新版本。',
+    ]
+    if any(path.name.startswith('mac.') and path.name.endswith('.command') and '启动游戏' in path.name for path in launchers):
+        run_instructions.append('macOS：双击「mac.启动游戏.command」，保留终端窗口。')
+    if any(path.name.startswith('windows.') and path.name.endswith('.bat') and '启动游戏' in path.name for path in launchers):
+        run_instructions.append('Windows：双击「windows.双击我启动游戏.bat」，保留命令窗口。')
+    run_instructions.extend([
+        '其他系统：在解压目录运行 npm start，打开 http://localhost:4173/ 。',
+        '',
+        'dist 包含游戏运行文件、人物转换网格、贴图、原骨架与动作、地图和声音。',
+        '当前精选人物与换装的转换网格及贴图已随包包含。',
+        '运行不需要原始 PMX、Blender、Downloads 目录或 npm 安装依赖。',
+        '不能直接双击 index.html 启动；请使用上述 HTTP 服务。',
+    ])
     generated = {
         'package.json': (json.dumps(runtime_package, ensure_ascii=False, indent=2) + '\n').encode(),
-        '运行说明.txt': (
-            '流星蝴蝶剑 Web 本地运行包\n\n'
-            '请先完整解压，再运行。需要 Node.js 20 或更新版本。\n'
-            'macOS：双击「启动游戏.command」，保留终端窗口。\n'
-            '其他系统：在解压目录运行 npm start，打开 http://localhost:4173/ 。\n\n'
-            'dist 包含游戏运行文件、人物转换网格、贴图、原骨架与动作、地图和声音。\n'
-            '当前精选人物与换装的转换网格及贴图已随包包含。\n'
-            '运行不需要原始 PMX、Blender、Downloads 目录或 npm 安装依赖。\n'
-            '不能直接双击 index.html 启动；请使用上述 HTTP 服务。\n'
-        ).encode(),
+        '运行说明.txt': ('\n'.join(run_instructions) + '\n').encode(),
     }
     records = []
     with tempfile.NamedTemporaryFile(dir=output, suffix='.zip', delete=False) as temporary:

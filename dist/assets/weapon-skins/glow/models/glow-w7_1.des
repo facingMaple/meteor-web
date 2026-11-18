@@ -1,0 +1,57 @@
+# GModel Geometry File V1.0
+# Model For Lxres.com Creation Time 2025/1/20 7:22:29
+SceneObjects 4 DummeyObjects 2
+Object hgat
+{
+  Position: 0.00000 -4.59400 -2.16000
+  Quaternion: 1.00000 0.00000 0.00000 0.00000
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}
+Object pln_weapon001
+{
+  Position: -0.01620 12.36637 0.00000
+  Quaternion: 0.70711 0.00000 0.00000 -0.70711
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}
+Object Human_Swor002
+{
+  Position: 0.93896 -5.71979 0.00000
+  Quaternion: 0.70711 0.70711 0.00000 0.00000
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}
+Object Plane003
+{
+  Position: 0.00000 -19.20656 0.00003
+  Quaternion: -0.38268 -0.00000 -0.92388 0.00000
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}
+Object D_wpnRS
+{
+  Position: 0.00000 23.39483 0.00000
+  Quaternion: 1.00000 0.00000 0.00000 0.00000
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}
+Object D_wpnRE
+{
+  Position: 0.00000 -33.51726 0.00000
+  Quaternion: 1.00000 0.00000 0.00000 0.00000
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}

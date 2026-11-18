@@ -83,7 +83,7 @@ export class MenuSnapshots {
       const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(3,5,7);scene.add(light);
       source.models.forEach((model,index)=>{
         // Borrow geometry/materials; never dispose the equipment's shared assets.
-        const clone=model.clone(true);clone.visible=true;clone.position.set(0,0,0);clone.rotation.set(0,0,0);
+        const clone=model.clone(true);clone.visible=true;clone.matrixAutoUpdate=true;clone.position.set(0,0,0);clone.rotation.set(0,0,0);
         clone.updateMatrixWorld(true);const box=new THREE.Box3().setFromObject(clone),center=box.getCenter(new THREE.Vector3());
         clone.position.sub(center);if(source.models.length>1)clone.position.x+=(index-(source.models.length-1)/2)*Math.max(box.getSize(new THREE.Vector3()).length()*.5,.1);
         group.add(clone);

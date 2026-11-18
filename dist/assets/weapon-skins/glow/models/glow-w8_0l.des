@@ -1,0 +1,21 @@
+# GModel Geometry File V1.0
+# Model For Lxres.com Creation Time 2025/1/20 8:05:49
+SceneObjects 2 DummeyObjects 0
+Object Human_Swor002
+{
+  Position: -0.16265 -0.77088 0.00000
+  Quaternion: 0.70711 0.70711 0.00000 0.00000
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}
+Object Plane003
+{
+  Position: 0.00000 0.00000 0.00000
+  Quaternion: 1.00000 0.00000 0.00000 0.00000
+  TextureAnimation: 0 0.0 0.0
+  Custom:
+  {
+  }
+}

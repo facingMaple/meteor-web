@@ -29,9 +29,10 @@ export function qiankunSheathWeight(data, pose, { mode = 'blade', rootPoseId = n
   return mode === 'sheath' ? 1 : 0;
 }
 
-export function qiankunSeatedBlade(manifest, bladeId, sheathId) {
+export function qiankunSeatedBlade(manifest, bladeId, sheathId, visualAttachments = {}) {
   const point = (id, name) => {
-    const value = manifest.weaponAttachments?.[id.toLowerCase()]?.[name]?.position;
+    const key = id.toLowerCase();
+    const value = (visualAttachments[key] ?? manifest.weaponAttachments?.[key])?.[name]?.position;
     if (!value || value.length !== 3 || !value.every(Number.isFinite)) throw new Error(`Missing original qiankun socket ${id}/${name}`);
     return new THREE.Vector3(...value);
   };
@@ -48,7 +49,10 @@ export function bindQiankunGrip(actor, data, manifest) {
   const left = actor.character.getAttachment('d_wpnLP'), right = actor.character.getAttachment('d_wpnRP');
   const flyingLeft=actor.character.getAttachment('d_wpnL'),flyingRight=actor.character.getAttachment('d_wpnR');
   if (!blade || !sheath || !left || !right) throw new Error('Original qiankun grip is incomplete');
-  const seated = qiankunSeatedBlade(manifest, blade.name, sheath.name);
+  const seated = qiankunSeatedBlade(manifest, blade.name, sheath.name, {
+    [blade.name.toLowerCase()]: blade.userData.qiankunGripAttachments,
+    [sheath.name.toLowerCase()]: sheath.userData.qiankunGripAttachments
+  });
   const closedPosition = new THREE.Vector3(), closedRotation = new THREE.Quaternion(), unit = new THREE.Vector3();
   seated.decompose(closedPosition, closedRotation, unit);
   const local = new THREE.Matrix4(), loaderUndo = new THREE.Matrix4().makeRotationX(Math.PI / 2);

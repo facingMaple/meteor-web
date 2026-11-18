@@ -213,11 +213,12 @@ function updateEnemyCount() {
   input.setAttribute('aria-valuetext', label);
   $('#training-enemy-value').value = label;
 }
+let renderedAppearanceWeapon;
 function updateWeaponAppearanceOptions(){
   const group = $('#weapon-appearance-options');
   const weapon = prefs.weapon;
-  if (group.dataset.appearanceWeapon !== weapon) {
-    group.dataset.appearanceWeapon = weapon;
+  if (renderedAppearanceWeapon !== weapon) {
+    renderedAppearanceWeapon = weapon;
     $('#weapon-appearance-heading').textContent = `${weapons[weapon].name}外观`;
     group.innerHTML = NATIVE_WEAPON_APPEARANCES[weapon].map(option => `
       <button class="sword-style-card${option.festive ? ' weapon-skin-festive' : ''}" type="button"

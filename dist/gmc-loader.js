@@ -62,6 +62,7 @@ export function readGmc(text) {
 
 function makeModel(data, options={}) {
   const {scale=0.015,groundZ=-360.545,texturePath='',textureMap={},textureAlphaMap={},unlit=false,skipEffects=true,vertexColors=true,desText=''}=options;
+  const {textureOverrides={}, additiveTextures=[]}=options;
   const descriptions=new Map();
   for(const m of desText.matchAll(/Object\s+(\S+)\s*\{([\s\S]*?)\n\}/g)) descriptions.set(m[1],m[2]);
   const group=new THREE.Group();
@@ -70,11 +71,19 @@ function makeModel(data, options={}) {
   const used=new Set(data.objects.flatMap(o=>o.faces.map(f=>f.shader)));
   const textureLoader=new THREE.TextureLoader(),pending=[],loaded=new Map();
   const materials=data.shaders.map((s,i)=>{
-    const transparent=s.opacity<0.999||/^ENABLE/i.test(s.blend);
+    const name=data.textures[s.texture]?.toLowerCase().replace(/\\/g,'/').split('/').pop();
+    const additive=additiveTextures.includes(name);
+    const transparent=additive||s.opacity<0.999||/^ENABLE/i.test(s.blend);
     const Material=unlit?THREE.MeshBasicMaterial:THREE.MeshStandardMaterial;
     const material=new Material({color:0xffffff,...(unlit?{toneMapped:false}:{roughness:0.91,metalness:0.02}),vertexColors,side:s.twoSide?THREE.DoubleSide:THREE.FrontSide,transparent,opacity:s.opacity,depthWrite:!transparent,alphaTest:s.mode==='ALPHACHANNEL'?0.1:0});
-    const name=data.textures[s.texture]?.toLowerCase().replace(/\\/g,'/').split('/').pop();
-    if(name&&(texturePath||textureMap[name])&&used.has(i)){
+    if(additive){
+      material.blending=THREE.AdditiveBlending;
+      material.side=THREE.DoubleSide;
+      material.forceSinglePass=true;
+      material.alphaTest=0;
+    }
+    if(textureOverrides[name])material.map=textureOverrides[name];
+    else if(name&&(texturePath||textureMap[name])&&used.has(i)){
       if(!loaded.has(name))loaded.set(name,new Promise(resolve=>textureLoader.load(textureMap[name]||texturePath+name,t=>{
         t.colorSpace=THREE.SRGBColorSpace;t.wrapS=t.wrapT=THREE.RepeatWrapping;t.anisotropy=4;resolve(t);
       },undefined,()=>resolve(null))));

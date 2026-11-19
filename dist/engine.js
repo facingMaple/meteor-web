@@ -30,6 +30,8 @@ import { NativeItemSystem, useNativeScriptItem, useNativeAttackItem, useNativeSe
 import { QIANKUN_MODE_NAMES } from './native-weapon-menu.js';
 import { DEFAULT_NATIVE_WEAPON_APPEARANCES, nativeWeaponAppearance } from './native-weapon-appearances.js';
 import { GlowWeaponAssets } from './glow-weapon-assets.js';
+import { COLLECTION_MODEL_PREFIX } from './weapon-collection-catalog.js';
+import { WeaponCollectionAssets } from './weapon-collection-assets.js';
 import { sweepActorCapsule, NativeProjectileSystem, aimNativeDart, NATIVE_DART_PROFILE, NativeMusketSystem, NATIVE_MUSKET_PROFILE, NativeWheelSystem, NATIVE_WHEEL_PROFILE } from './native-projectiles.js';
 import { NativeImpactFeedback } from './native-impact-feedback.js';
 import { NativeBloodFeedback, bloodStyleForHit } from './native-blood-feedback.js';
@@ -378,6 +380,7 @@ export class MeteorGame {
   }
   async _readWeapon(modelId) {
     if (modelId.startsWith('glow-')) return (this.glowWeapons ||= new GlowWeaponAssets()).load(modelId);
+    if (modelId.startsWith(COLLECTION_MODEL_PREFIX)) return (this.collectionWeapons ||= new WeaponCollectionAssets()).load(modelId);
     const entry = this.weaponModels.get(modelId.toLowerCase()); if (!entry) throw new Error(`Original weapon ${modelId} not extracted`);
     const base = new URL('weapon-models/', originalRoot), textureMap = {}, textureAlphaMap = {};
     for (const t of entry.textures) { const url = t.url || t.frames?.[0]?.url; if (url) textureMap[t.reference.toLowerCase()] = new URL(url, base).href; if (t.alphaMask) textureAlphaMap[t.reference.toLowerCase()] = new URL(t.alphaMask, base).href; }
@@ -1702,6 +1705,7 @@ export class MeteorGame {
       this.slowFeedback?.update(feedbackStep,[this.hero,...this.enemies]);
       this.rageVfx?.update(feedbackStep, this.camera);
       this.glowWeapons?.update(this.elapsed);
+      this.collectionWeapons?.update(this.elapsed);
       this.butterflyVfx?.update(dt, { attacking: !!this.hero?.combat?.attacking, camera: this.camera });
       if (this.hero?.phoenixSpear?.visible) this.hero.phoenixSpear.userData.update(this.elapsed);
   }
@@ -1787,6 +1791,7 @@ export class MeteorGame {
     disposeButterflySword(this.hero?.butterflySword); disposeButterflySword(this.butterflySwordTemplate); this.butterflySwordTemplate = null;
     disposeRaidenSword(this.raidenSwordTemplate); this.raidenSwordTemplate = null;
     this.glowWeapons?.dispose();
+    this.collectionWeapons?.dispose();
     this.butterflyEnvironment?.dispose(); this.butterflyEnvironment = null;
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose()); this.collisionMaterial.dispose(); this.renderer.dispose(); this.audio?.close();
   }

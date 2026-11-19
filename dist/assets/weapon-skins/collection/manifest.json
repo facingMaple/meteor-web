@@ -1,0 +1,1359 @@
+{
+  "models": {
+    "collection-w0_0": {
+      "url": "models/collection-w0_0.gmb",
+      "source": "cmodel/w0_0.GMC",
+      "textures": [
+        "a34c028ead323851"
+      ]
+    },
+    "collection-w0_1": {
+      "url": "models/collection-w0_1.gmb",
+      "source": "cmodel/w0_1.GMC",
+      "textures": [
+        "6da9eb00c4914b11"
+      ]
+    },
+    "collection-w0_2": {
+      "url": "models/collection-w0_2.gmb",
+      "source": "cmodel/w0_2.GMC",
+      "textures": [
+        "7f4f2dfe5719a5d0"
+      ]
+    },
+    "collection-w0_3": {
+      "url": "models/collection-w0_3.gmb",
+      "source": "cmodel/w0_3.GMC",
+      "textures": [
+        "9a5dbe5a75dd6ec7"
+      ]
+    },
+    "collection-w0_4": {
+      "url": "models/collection-w0_4.gmb",
+      "source": "cmodel/w0_4.gmc",
+      "textures": [
+        "f6f5f20f7e1c3d68"
+      ]
+    },
+    "collection-festive-w0_4": {
+      "url": "models/collection-festive-w0_4.gmb",
+      "source": "圣诞武器模型！/w0_4.GMC",
+      "textures": [
+        "03012b777db712f5"
+      ]
+    },
+    "collection-w1_0": {
+      "url": "models/collection-w1_0.gmb",
+      "source": "cmodel/w1_0.GMC",
+      "textures": [
+        "fa7fe4e83d9772e7"
+      ]
+    },
+    "collection-w1_1": {
+      "url": "models/collection-w1_1.gmb",
+      "source": "cmodel/w1_1.gmc",
+      "textures": [
+        "1aea6e8dde8c9387"
+      ]
+    },
+    "collection-w1_2": {
+      "url": "models/collection-w1_2.gmb",
+      "source": "cmodel/w1_2.GMC",
+      "textures": [
+        "188ea863bcb300cc"
+      ]
+    },
+    "collection-w1_3": {
+      "url": "models/collection-w1_3.gmb",
+      "source": "cmodel/w1_3.GMC",
+      "textures": [
+        "e14bb128e37b8b43"
+      ]
+    },
+    "collection-w1_4": {
+      "url": "models/collection-w1_4.gmb",
+      "source": "cmodel/w1_4.gmc",
+      "textures": [
+        "3e4e5b50ef190e53"
+      ]
+    },
+    "collection-festive-w1_4": {
+      "url": "models/collection-festive-w1_4.gmb",
+      "source": "圣诞武器模型！/w1_4.gmc",
+      "textures": [
+        "e045344c9d300066",
+        "fc3636ea09ac9a87"
+      ],
+      "additive": [
+        "fc3636ea09ac9a87"
+      ]
+    },
+    "collection-w2_0": {
+      "url": "models/collection-w2_0.gmb",
+      "source": "cmodel/w2_0.GMC",
+      "textures": [
+        "177a5b36a65d3599"
+      ]
+    },
+    "collection-w2_1": {
+      "url": "models/collection-w2_1.gmb",
+      "source": "cmodel/w2_1.GMC",
+      "textures": [
+        "5289f880b586853a"
+      ]
+    },
+    "collection-w2_2": {
+      "url": "models/collection-w2_2.gmb",
+      "source": "cmodel/w2_2.GMC",
+      "textures": [
+        "0b1f26cd81a4ffea"
+      ]
+    },
+    "collection-w2_3": {
+      "url": "models/collection-w2_3.gmb",
+      "source": "cmodel/w2_3.gmc",
+      "textures": [
+        "a6a3fc820c0a9b3b"
+      ]
+    },
+    "collection-w2_4": {
+      "url": "models/collection-w2_4.gmb",
+      "source": "cmodel/w2_4.GMC",
+      "textures": [
+        "5b177941b3ffd649"
+      ]
+    },
+    "collection-w3_0": {
+      "url": "models/collection-w3_0.gmb",
+      "source": "cmodel/w3_0.GMC",
+      "textures": [
+        "a75e6f391d9fe387"
+      ]
+    },
+    "collection-w3_1": {
+      "url": "models/collection-w3_1.gmb",
+      "source": "cmodel/w3_1.GMC",
+      "textures": [
+        "661205866fb536b7"
+      ]
+    },
+    "collection-w3_2": {
+      "url": "models/collection-w3_2.gmb",
+      "source": "cmodel/w3_2.GMC",
+      "textures": [
+        "571832ca6f1c2d95"
+      ]
+    },
+    "collection-w3_3": {
+      "url": "models/collection-w3_3.gmb",
+      "source": "cmodel/w3_3.GMC",
+      "textures": [
+        "066370557aebae35"
+      ]
+    },
+    "collection-w3_4": {
+      "url": "models/collection-w3_4.gmb",
+      "source": "cmodel/w3_4.gmb",
+      "textures": [
+        "fd384f84e1a90219"
+      ]
+    },
+    "collection-w3_5": {
+      "url": "models/collection-w3_5.gmb",
+      "source": "cmodel/w3_5.gmc",
+      "textures": [
+        "c3bd7b95b123207f"
+      ]
+    },
+    "collection-w4_0": {
+      "url": "models/collection-w4_0.gmb",
+      "source": "cmodel/w4_0.GMC",
+      "textures": [
+        "a3150060410b2ee5"
+      ]
+    },
+    "collection-w4_1": {
+      "url": "models/collection-w4_1.gmb",
+      "source": "cmodel/w4_1.GMC",
+      "textures": [
+        "a63ffdf547d6a7c3"
+      ]
+    },
+    "collection-w4_2": {
+      "url": "models/collection-w4_2.gmb",
+      "source": "cmodel/w4_2.GMC",
+      "textures": [
+        "0912ff651f15a8b6"
+      ]
+    },
+    "collection-w4_3": {
+      "url": "models/collection-w4_3.gmb",
+      "source": "cmodel/w4_3.GMC",
+      "textures": [
+        "2cc4e54dd912db72"
+      ]
+    },
+    "collection-w4_4": {
+      "url": "models/collection-w4_4.gmb",
+      "source": "cmodel/w4_4.gmc",
+      "textures": [
+        "7ac7e2731b244e67"
+      ]
+    },
+    "collection-festive-w4_4": {
+      "url": "models/collection-festive-w4_4.gmb",
+      "source": "圣诞武器模型！/w4_4.GMC",
+      "textures": [
+        "743ec5c1b029f8cc"
+      ]
+    },
+    "collection-w5_0": {
+      "url": "models/collection-w5_0.gmb",
+      "source": "cmodel/w5_0.GMC",
+      "textures": [
+        "bb58009eb4a3d65a"
+      ]
+    },
+    "collection-w5_1": {
+      "url": "models/collection-w5_1.gmb",
+      "source": "cmodel/w5_1.GMC",
+      "textures": [
+        "a1d1d8f43b89b809"
+      ]
+    },
+    "collection-w5_2": {
+      "url": "models/collection-w5_2.gmb",
+      "source": "cmodel/w5_2.GMC",
+      "textures": [
+        "2105f20127528f78"
+      ]
+    },
+    "collection-w5_4": {
+      "url": "models/collection-w5_4.gmb",
+      "source": "cmodel/w5_4.gmc",
+      "textures": [
+        "e1cb44e68edae5a0"
+      ]
+    },
+    "collection-festive-w5_4": {
+      "url": "models/collection-festive-w5_4.gmb",
+      "source": "圣诞武器模型！/w5_4.GMC",
+      "textures": [
+        "0b4e80740466d512"
+      ]
+    },
+    "collection-w6_0": {
+      "url": "models/collection-w6_0.gmb",
+      "source": "cmodel/w6_0.GMC",
+      "textures": [
+        "e7f17d25d9a5c83d"
+      ]
+    },
+    "collection-w6_1": {
+      "url": "models/collection-w6_1.gmb",
+      "source": "cmodel/w6_1.GMC",
+      "textures": [
+        "2c9d7ea217ec9d89"
+      ]
+    },
+    "collection-w6_2": {
+      "url": "models/collection-w6_2.gmb",
+      "source": "cmodel/w6_2.GMC",
+      "textures": [
+        "f5792bb3f6a0288c"
+      ]
+    },
+    "collection-w6_3": {
+      "url": "models/collection-w6_3.gmb",
+      "source": "cmodel/w6_3.GMC",
+      "textures": [
+        "b13dd97bcdfdebd6"
+      ]
+    },
+    "collection-w6_4": {
+      "url": "models/collection-w6_4.gmb",
+      "source": "cmodel/W6_4.gmc",
+      "textures": [
+        "ba93aae1419f8e15"
+      ]
+    },
+    "collection-festive-w6_4": {
+      "url": "models/collection-festive-w6_4.gmb",
+      "source": "圣诞武器模型！/W6_4.GMC",
+      "textures": [
+        "24857935e946c5c1-scroll",
+        "80500cb988c9079d",
+        "b91e04fa05942651"
+      ],
+      "additive": [
+        "24857935e946c5c1-scroll",
+        "b91e04fa05942651"
+      ]
+    },
+    "collection-w7_0": {
+      "url": "models/collection-w7_0.gmb",
+      "source": "cmodel/w7_0.GMC",
+      "textures": [
+        "1bab8a7e5d8679e4"
+      ]
+    },
+    "collection-w7_1": {
+      "url": "models/collection-w7_1.gmb",
+      "source": "cmodel/w7_1.GMC",
+      "textures": [
+        "8c8dd3f21f8ef71f"
+      ]
+    },
+    "collection-w7_2": {
+      "url": "models/collection-w7_2.gmb",
+      "source": "cmodel/w7_2.GMC",
+      "textures": [
+        "29db347091c72a13"
+      ]
+    },
+    "collection-w7_3": {
+      "url": "models/collection-w7_3.gmb",
+      "source": "cmodel/w7_3.GMC",
+      "textures": [
+        "63492f0c4253b918"
+      ]
+    },
+    "collection-w7_4": {
+      "url": "models/collection-w7_4.gmb",
+      "source": "cmodel/w7_4.gmc",
+      "textures": [
+        "50161c6afb5d1409"
+      ]
+    },
+    "collection-festive-w7_4": {
+      "url": "models/collection-festive-w7_4.gmb",
+      "source": "圣诞武器模型！/w7_4.GMC",
+      "textures": [
+        "e5bfb6304091d8c6"
+      ]
+    },
+    "collection-w8_0r": {
+      "url": "models/collection-w8_0r.gmb",
+      "source": "cmodel/w8_0r.GMC",
+      "textures": [
+        "74a927edbef2471d"
+      ]
+    },
+    "collection-w8_0l": {
+      "url": "models/collection-w8_0l.gmb",
+      "source": "cmodel/w8_0l.GMC",
+      "textures": [
+        "74a927edbef2471d"
+      ]
+    },
+    "collection-w8_1r": {
+      "url": "models/collection-w8_1r.gmb",
+      "source": "cmodel/w8_1r.GMC",
+      "textures": [
+        "ec5a1239b62cc253"
+      ]
+    },
+    "collection-w8_1l": {
+      "url": "models/collection-w8_1l.gmb",
+      "source": "cmodel/w8_1l.GMC",
+      "textures": [
+        "ec5a1239b62cc253"
+      ]
+    },
+    "collection-w8_2r": {
+      "url": "models/collection-w8_2r.gmb",
+      "source": "cmodel/W8_2r.gmc",
+      "textures": [
+        "18558020b91bac1b"
+      ]
+    },
+    "collection-w8_2l": {
+      "url": "models/collection-w8_2l.gmb",
+      "source": "cmodel/W8_2l.gmc",
+      "textures": [
+        "18558020b91bac1b"
+      ]
+    },
+    "collection-w8_3r": {
+      "url": "models/collection-w8_3r.gmb",
+      "source": "cmodel/w8_3r.GMC",
+      "textures": [
+        "39052f5495bc2c15"
+      ]
+    },
+    "collection-w8_3l": {
+      "url": "models/collection-w8_3l.gmb",
+      "source": "cmodel/w8_3l.GMC",
+      "textures": [
+        "39052f5495bc2c15"
+      ]
+    },
+    "collection-w8_4r": {
+      "url": "models/collection-w8_4r.gmb",
+      "source": "cmodel/w8_4r.gmc",
+      "textures": [
+        "74a927edbef2471d"
+      ]
+    },
+    "collection-w8_4l": {
+      "url": "models/collection-w8_4l.gmb",
+      "source": "cmodel/w8_4l.gmc",
+      "textures": [
+        "74a927edbef2471d"
+      ]
+    },
+    "collection-w9_0r": {
+      "url": "models/collection-w9_0r.gmb",
+      "source": "cmodel/w9_0r.GMC",
+      "textures": [
+        "5131fcf6d1fb66a9"
+      ],
+      "gripAttachments": {
+        "d_wpnre": {
+          "position": [
+            0.635,
+            -22.288,
+            -0.0
+          ]
+        },
+        "d_wpnrs": {
+          "position": [
+            0.0,
+            -1.855,
+            -0.0
+          ]
+        }
+      }
+    },
+    "collection-w9_0l": {
+      "url": "models/collection-w9_0l.gmb",
+      "source": "cmodel/W9_0l.gmc",
+      "textures": [
+        "5131fcf6d1fb66a9"
+      ],
+      "gripAttachments": {
+        "d_wpnls": {
+          "position": [
+            0.0,
+            18.388,
+            -0.0
+          ]
+        },
+        "d_wpnle": {
+          "position": [
+            -0.007,
+            16.589,
+            -0.0
+          ]
+        }
+      }
+    },
+    "collection-w9_1r": {
+      "url": "models/collection-w9_1r.gmb",
+      "source": "cmodel/W9_1r.gmc",
+      "textures": [
+        "30f066ce3909cec0"
+      ],
+      "gripAttachments": {
+        "d_wpnrs": {
+          "position": [
+            0.0,
+            -1.855,
+            -0.0
+          ]
+        },
+        "d_wpnre": {
+          "position": [
+            0.635,
+            -22.288,
+            -0.0
+          ]
+        }
+      }
+    },
+    "collection-w9_1l": {
+      "url": "models/collection-w9_1l.gmb",
+      "source": "cmodel/W9_1l.gmc",
+      "textures": [
+        "30f066ce3909cec0"
+      ],
+      "gripAttachments": {
+        "d_wpnls": {
+          "position": [
+            0.0,
+            18.388,
+            -0.0
+          ]
+        },
+        "d_wpnle": {
+          "position": [
+            -0.007,
+            16.589,
+            -0.0
+          ]
+        }
+      }
+    },
+    "collection-w9_2r": {
+      "url": "models/collection-w9_2r.gmb",
+      "source": "cmodel/w9_2r.gmc",
+      "textures": [
+        "a5e043bdbd7c35fd"
+      ],
+      "gripAttachments": {
+        "d_wpnre": {
+          "position": [
+            -0.002,
+            -22.288,
+            -0.0
+          ]
+        },
+        "d_wpnrs": {
+          "position": [
+            0.0,
+            -1.855,
+            -0.0
+          ]
+        }
+      }
+    },
+    "collection-w9_2l": {
+      "url": "models/collection-w9_2l.gmb",
+      "source": "cmodel/w9_2l.gmc",
+      "textures": [
+        "a5e043bdbd7c35fd"
+      ],
+      "gripAttachments": {
+        "d_wpnls": {
+          "position": [
+            0.0,
+            18.388,
+            -0.0
+          ]
+        },
+        "d_wpnle": {
+          "position": [
+            -0.007,
+            16.589,
+            -0.0
+          ]
+        }
+      }
+    },
+    "collection-w9_3r": {
+      "url": "models/collection-w9_3r.gmb",
+      "source": "cmodel/W9_3r.gmc",
+      "textures": [
+        "8f4d2396a5dde0ab"
+      ],
+      "gripAttachments": {
+        "d_wpnrs": {
+          "position": [
+            0.043,
+            -1.855,
+            -0.0
+          ]
+        },
+        "d_wpnre": {
+          "position": [
+            0.679,
+            -22.288,
+            -0.0
+          ]
+        }
+      }
+    },
+    "collection-w9_3l": {
+      "url": "models/collection-w9_3l.gmb",
+      "source": "cmodel/W9_3l.gmc",
+      "textures": [
+        "8f4d2396a5dde0ab"
+      ],
+      "gripAttachments": {
+        "d_wpnle": {
+          "position": [
+            -0.007,
+            17.065,
+            0.0
+          ]
+        },
+        "d_wpnls": {
+          "position": [
+            -0.0,
+            18.388,
+            0.0
+          ]
+        }
+      }
+    },
+    "collection-w10_0r": {
+      "url": "models/collection-w10_0r.gmb",
+      "source": "cmodel/W10_0r.gmc",
+      "textures": [
+        "df261714e14cd7f5"
+      ]
+    },
+    "collection-w10_0l": {
+      "url": "models/collection-w10_0l.gmb",
+      "source": "cmodel/W10_0l.gmc",
+      "textures": [
+        "df261714e14cd7f5"
+      ]
+    },
+    "collection-w10_1r": {
+      "url": "models/collection-w10_1r.gmb",
+      "source": "cmodel/W10_1r.gmc",
+      "textures": [
+        "f7b36c164935430f"
+      ]
+    },
+    "collection-w10_1l": {
+      "url": "models/collection-w10_1l.gmb",
+      "source": "cmodel/W10_1l.gmc",
+      "textures": [
+        "f7b36c164935430f"
+      ]
+    },
+    "collection-w10_2r": {
+      "url": "models/collection-w10_2r.gmb",
+      "source": "cmodel/W10_2r.gmc",
+      "textures": [
+        "80ce71101f5527b4"
+      ]
+    },
+    "collection-w10_2l": {
+      "url": "models/collection-w10_2l.gmb",
+      "source": "cmodel/W10_2l.gmc",
+      "textures": [
+        "80ce71101f5527b4"
+      ]
+    },
+    "collection-w10_3r": {
+      "url": "models/collection-w10_3r.gmb",
+      "source": "cmodel/w10_3r.GMC",
+      "textures": [
+        "d442152b665bab49"
+      ]
+    },
+    "collection-w10_3l": {
+      "url": "models/collection-w10_3l.gmb",
+      "source": "cmodel/w10_3l.GMC",
+      "textures": [
+        "d442152b665bab49"
+      ]
+    },
+    "collection-w11_0": {
+      "url": "models/collection-w11_0.gmb",
+      "source": "cmodel/W11_0.GMC",
+      "textures": [
+        "34117bdc2e4626ca"
+      ]
+    },
+    "collection-w11_1": {
+      "url": "models/collection-w11_1.gmb",
+      "source": "cmodel/W11_1.GMC",
+      "textures": [
+        "a79d8fd414a10b86"
+      ]
+    },
+    "collection-w11_2": {
+      "url": "models/collection-w11_2.gmb",
+      "source": "cmodel/w11_2.GMC",
+      "textures": [
+        "c4acbead8422fa7f"
+      ]
+    },
+    "collection-w11_3": {
+      "url": "models/collection-w11_3.gmb",
+      "source": "cmodel/w11_3.GMC",
+      "textures": [
+        "fabaa140c22d2433"
+      ]
+    }
+  },
+  "textures": {
+    "a34c028ead323851": {
+      "url": "textures/a34c028ead323851.webp"
+    },
+    "6da9eb00c4914b11": {
+      "url": "textures/6da9eb00c4914b11.webp"
+    },
+    "7f4f2dfe5719a5d0": {
+      "url": "textures/7f4f2dfe5719a5d0.webp"
+    },
+    "9a5dbe5a75dd6ec7": {
+      "url": "textures/9a5dbe5a75dd6ec7.webp"
+    },
+    "f6f5f20f7e1c3d68": {
+      "url": "textures/f6f5f20f7e1c3d68.webp"
+    },
+    "03012b777db712f5": {
+      "atlas": {
+        "width": 179,
+        "height": 256,
+        "columns": 2,
+        "frames": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          1,
+          1,
+          1,
+          0,
+          1,
+          1,
+          0,
+          1,
+          1,
+          1,
+          1,
+          0,
+          0,
+          0,
+          0
+        ]
+      },
+      "url": "textures/03012b777db712f5.webp"
+    },
+    "fa7fe4e83d9772e7": {
+      "url": "textures/fa7fe4e83d9772e7.webp"
+    },
+    "1aea6e8dde8c9387": {
+      "url": "textures/1aea6e8dde8c9387.webp"
+    },
+    "188ea863bcb300cc": {
+      "url": "textures/188ea863bcb300cc.webp"
+    },
+    "e14bb128e37b8b43": {
+      "url": "textures/e14bb128e37b8b43.webp"
+    },
+    "3e4e5b50ef190e53": {
+      "url": "textures/3e4e5b50ef190e53.webp"
+    },
+    "e045344c9d300066": {
+      "atlas": {
+        "width": 223,
+        "height": 256,
+        "columns": 13,
+        "frames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133
+        ]
+      },
+      "url": "textures/e045344c9d300066.webp"
+    },
+    "fc3636ea09ac9a87": {
+      "atlas": {
+        "width": 223,
+        "height": 256,
+        "columns": 13,
+        "frames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60,
+          61,
+          62,
+          63,
+          64,
+          65,
+          66,
+          67,
+          68,
+          69,
+          70,
+          71,
+          72,
+          73,
+          74,
+          75,
+          76,
+          77,
+          78,
+          79,
+          80,
+          81,
+          82,
+          83,
+          84,
+          85,
+          86,
+          87,
+          88,
+          89,
+          90,
+          91,
+          92,
+          93,
+          94,
+          95,
+          96,
+          97,
+          98,
+          99,
+          100,
+          101,
+          102,
+          103,
+          104,
+          105,
+          106,
+          107,
+          108,
+          109,
+          110,
+          111,
+          112,
+          113,
+          114,
+          115,
+          116,
+          117,
+          118,
+          119,
+          120,
+          121,
+          122,
+          123,
+          124,
+          125,
+          126,
+          127,
+          128,
+          129,
+          130,
+          131,
+          132,
+          133
+        ]
+      },
+      "url": "textures/fc3636ea09ac9a87.webp"
+    },
+    "177a5b36a65d3599": {
+      "url": "textures/177a5b36a65d3599.webp"
+    },
+    "5289f880b586853a": {
+      "url": "textures/5289f880b586853a.webp"
+    },
+    "0b1f26cd81a4ffea": {
+      "url": "textures/0b1f26cd81a4ffea.webp"
+    },
+    "a6a3fc820c0a9b3b": {
+      "url": "textures/a6a3fc820c0a9b3b.webp"
+    },
+    "5b177941b3ffd649": {
+      "url": "textures/5b177941b3ffd649.webp"
+    },
+    "a75e6f391d9fe387": {
+      "url": "textures/a75e6f391d9fe387.webp"
+    },
+    "661205866fb536b7": {
+      "url": "textures/661205866fb536b7.webp"
+    },
+    "571832ca6f1c2d95": {
+      "url": "textures/571832ca6f1c2d95.webp"
+    },
+    "066370557aebae35": {
+      "url": "textures/066370557aebae35.webp"
+    },
+    "fd384f84e1a90219": {
+      "url": "textures/fd384f84e1a90219.webp"
+    },
+    "c3bd7b95b123207f": {
+      "url": "textures/c3bd7b95b123207f.webp"
+    },
+    "a3150060410b2ee5": {
+      "url": "textures/a3150060410b2ee5.webp"
+    },
+    "a63ffdf547d6a7c3": {
+      "url": "textures/a63ffdf547d6a7c3.webp"
+    },
+    "0912ff651f15a8b6": {
+      "url": "textures/0912ff651f15a8b6.webp"
+    },
+    "2cc4e54dd912db72": {
+      "url": "textures/2cc4e54dd912db72.webp"
+    },
+    "7ac7e2731b244e67": {
+      "url": "textures/7ac7e2731b244e67.webp"
+    },
+    "743ec5c1b029f8cc": {
+      "atlas": {
+        "width": 256,
+        "height": 256,
+        "columns": 8,
+        "frames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52
+        ]
+      },
+      "url": "textures/743ec5c1b029f8cc.webp"
+    },
+    "bb58009eb4a3d65a": {
+      "url": "textures/bb58009eb4a3d65a.webp"
+    },
+    "a1d1d8f43b89b809": {
+      "url": "textures/a1d1d8f43b89b809.webp"
+    },
+    "2105f20127528f78": {
+      "url": "textures/2105f20127528f78.webp"
+    },
+    "e1cb44e68edae5a0": {
+      "url": "textures/e1cb44e68edae5a0.webp"
+    },
+    "0b4e80740466d512": {
+      "atlas": {
+        "width": 256,
+        "height": 256,
+        "columns": 8,
+        "frames": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11,
+          12,
+          13,
+          14,
+          15,
+          16,
+          17,
+          18,
+          19,
+          20,
+          21,
+          22,
+          23,
+          24,
+          25,
+          26,
+          27,
+          28,
+          29,
+          30,
+          31,
+          32,
+          33,
+          34,
+          35,
+          36,
+          37,
+          38,
+          39,
+          40,
+          41,
+          42,
+          43,
+          44,
+          45,
+          46,
+          47,
+          48,
+          49,
+          50,
+          51,
+          52,
+          53,
+          54,
+          55,
+          56,
+          57,
+          58,
+          59,
+          60
+        ]
+      },
+      "url": "textures/0b4e80740466d512.webp"
+    },
+    "e7f17d25d9a5c83d": {
+      "url": "textures/e7f17d25d9a5c83d.webp"
+    },
+    "2c9d7ea217ec9d89": {
+      "url": "textures/2c9d7ea217ec9d89.webp"
+    },
+    "f5792bb3f6a0288c": {
+      "url": "textures/f5792bb3f6a0288c.webp"
+    },
+    "b13dd97bcdfdebd6": {
+      "url": "textures/b13dd97bcdfdebd6.webp"
+    },
+    "ba93aae1419f8e15": {
+      "url": "textures/ba93aae1419f8e15.webp"
+    },
+    "b91e04fa05942651": {
+      "url": "textures/b91e04fa05942651.webp"
+    },
+    "24857935e946c5c1-scroll": {
+      "scrollV": -0.5,
+      "url": "textures/24857935e946c5c1.webp"
+    },
+    "80500cb988c9079d": {
+      "url": "textures/80500cb988c9079d.webp"
+    },
+    "1bab8a7e5d8679e4": {
+      "url": "textures/1bab8a7e5d8679e4.webp"
+    },
+    "8c8dd3f21f8ef71f": {
+      "url": "textures/8c8dd3f21f8ef71f.webp"
+    },
+    "29db347091c72a13": {
+      "url": "textures/29db347091c72a13.webp"
+    },
+    "63492f0c4253b918": {
+      "url": "textures/63492f0c4253b918.webp"
+    },
+    "50161c6afb5d1409": {
+      "url": "textures/50161c6afb5d1409.webp"
+    },
+    "e5bfb6304091d8c6": {
+      "atlas": {
+        "width": 256,
+        "height": 190,
+        "columns": 5,
+        "frames": [
+          0,
+          0,
+          1,
+          1,
+          2,
+          2,
+          3,
+          3,
+          4,
+          4,
+          5,
+          5,
+          6,
+          6,
+          7,
+          7,
+          8,
+          8,
+          9,
+          9,
+          10,
+          10,
+          11,
+          12,
+          12,
+          13,
+          13,
+          14,
+          14,
+          15,
+          15,
+          16,
+          16,
+          17,
+          17,
+          18,
+          18,
+          19,
+          19,
+          20,
+          20,
+          21,
+          21
+        ]
+      },
+      "url": "textures/e5bfb6304091d8c6.webp"
+    },
+    "74a927edbef2471d": {
+      "url": "textures/74a927edbef2471d.webp"
+    },
+    "ec5a1239b62cc253": {
+      "url": "textures/ec5a1239b62cc253.webp"
+    },
+    "18558020b91bac1b": {
+      "url": "textures/18558020b91bac1b.webp"
+    },
+    "39052f5495bc2c15": {
+      "url": "textures/39052f5495bc2c15.webp"
+    },
+    "5131fcf6d1fb66a9": {
+      "url": "textures/5131fcf6d1fb66a9.webp"
+    },
+    "30f066ce3909cec0": {
+      "url": "textures/30f066ce3909cec0.webp"
+    },
+    "a5e043bdbd7c35fd": {
+      "url": "textures/a5e043bdbd7c35fd.webp"
+    },
+    "8f4d2396a5dde0ab": {
+      "url": "textures/8f4d2396a5dde0ab.webp"
+    },
+    "df261714e14cd7f5": {
+      "url": "textures/df261714e14cd7f5.webp"
+    },
+    "f7b36c164935430f": {
+      "url": "textures/f7b36c164935430f.webp"
+    },
+    "80ce71101f5527b4": {
+      "url": "textures/80ce71101f5527b4.webp"
+    },
+    "d442152b665bab49": {
+      "url": "textures/d442152b665bab49.webp"
+    },
+    "34117bdc2e4626ca": {
+      "url": "textures/34117bdc2e4626ca.webp"
+    },
+    "a79d8fd414a10b86": {
+      "url": "textures/a79d8fd414a10b86.webp"
+    },
+    "c4acbead8422fa7f": {
+      "url": "textures/c4acbead8422fa7f.webp"
+    },
+    "fabaa140c22d2433": {
+      "url": "textures/fabaa140c22d2433.webp"
+    }
+  }
+}

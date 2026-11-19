@@ -1,3 +1,5 @@
+import { WEAPON_COLLECTION_APPEARANCES } from './weapon-collection-catalog.js';
+
 // Appearance-only variants use separate model IDs from the equipped weapon record.
 export const DEFAULT_NATIVE_WEAPON_APPEARANCES = Object.freeze({
   sword: 'butterfly', blade: 'original', spear: 'original', dagger: 'original',
@@ -61,7 +63,10 @@ const entries = {
 };
 
 export const NATIVE_WEAPON_APPEARANCES = Object.freeze(Object.fromEntries(
-  Object.entries(entries).map(([weapon, options]) => [weapon, Object.freeze(options.map(option => Object.freeze(option)))])
+  Object.entries(entries).map(([weapon, options]) => {
+    const appearances = [...options, ...WEAPON_COLLECTION_APPEARANCES[weapon]];
+    return [weapon, Object.freeze(appearances.map(option => Object.freeze(option)))];
+  })
 ));
 
 export function nativeWeaponAppearance(weapon, id) {

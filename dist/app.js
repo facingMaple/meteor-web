@@ -220,14 +220,20 @@ function updateWeaponAppearanceOptions(){
   if (renderedAppearanceWeapon !== weapon) {
     renderedAppearanceWeapon = weapon;
     $('#weapon-appearance-heading').textContent = `${weapons[weapon].name}外观`;
-    group.innerHTML = NATIVE_WEAPON_APPEARANCES[weapon].map(option => `
+    let collection;
+    group.innerHTML = NATIVE_WEAPON_APPEARANCES[weapon].map(option => {
+      const heading = option.collection && option.collection !== collection
+        ? `<h4 class="weapon-appearance-group">${option.collection === 'festive' ? '圣诞动态' : '模型合集'}</h4>` : '';
+      collection = option.collection;
+      return `${heading}
       <button class="sword-style-card${option.festive ? ' weapon-skin-festive' : ''}" type="button"
         data-weapon-appearance="${option.id}" aria-pressed="false">
         <span class="sword-style-icon ${option.id}" aria-hidden="true">${option.glyph}</span>
-        <span class="sword-style-copy"><strong>${option.name}</strong><small>${option.detail}</small></span>
+        <span class="sword-style-copy"><strong>${option.name}</strong>${option.detail ? `<small>${option.detail}</small>` : ''}</span>
         <span class="sword-style-status">选择</span>
       </button>
-    `).join('');
+    `;
+    }).join('');
   }
   for (const button of group.querySelectorAll('[data-weapon-appearance]')) {
     const selected = button.dataset.weaponAppearance === prefs.weaponAppearances[weapon];
@@ -343,8 +349,11 @@ async function openModelViewer(kind){
     await engine.setCharacter(selection.character, selection.characterAppearance);
     if (!active()) return;
     menuSnapshots ||= new MenuSnapshots(engine);
-    modelViewer = mountModelViewer({ canvas, kind, active, draw: view => kind === 'character' ?
-      menuSnapshots.character(key, view, canvas) : menuSnapshots.weapon(key, view, canvas),
+    const animated = kind === 'weapon' && nativeWeaponAppearance(weapon, weaponAppearance)?.collection === 'festive';
+    modelViewer = mountModelViewer({ canvas, kind, active, animated, draw: view => {
+      if (animated) engine.collectionWeapons?.update(performance.now() / 1000);
+      return kind === 'character' ? menuSnapshots.character(key, view, canvas) : menuSnapshots.weapon(key, view, canvas);
+    },
       onError: error => { status.textContent = '预览暂不可用，请关闭后重试'; console.warn(error); } });
     status.textContent = '';
     canvas.addEventListener('dblclick', () => modelViewer?.adjust('reset'));

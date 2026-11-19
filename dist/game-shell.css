@@ -65,4 +65,5 @@
 #weapon-appearance-options .weapon-skin-festive .sword-style-icon{border-color:#bd6852;color:#f0d5a3;background:linear-gradient(145deg,#ad3b3620,#31543d33)}
 #weapon-appearance-options .weapon-skin-festive.selected{box-shadow:inset 0 0 0 1px #b85b4555}
 #weapon-appearance-options .sword-style-card{min-height:48px}
+#weapon-appearance-options .weapon-appearance-group{grid-column:1/-1;margin:6px 0 0;padding-top:8px;border-top:1px solid #dec18c44;color:#e3c98e;font:600 12px var(--sans);letter-spacing:1px}
 @media(max-width:700px){#weapon-appearance-options .sword-style-card{min-height:52px}}

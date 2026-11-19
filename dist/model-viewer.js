@@ -1,5 +1,5 @@
-// One frame per interaction, coalesced; no idle render loop or extra WebGL context.
-export function mountModelViewer({canvas,draw,active=()=>true,kind='character',onError=()=>{}}){
+// Coalesce interaction and animation requests into a single draw.
+export function mountModelViewer({canvas,draw,active=()=>true,kind='character',animated=false,onError=()=>{}}){
   let disposed=false,frame=null,busy=false,dirty=false,pointer=null;
   const defaults={yaw:kind==='weapon'?.35:0,pitch:kind==='weapon'?.18:0,zoom:1},view={...defaults};
   function request(){if(disposed||!active())return;dirty=true;if(frame===null&&!busy)frame=requestAnimationFrame(render);}
@@ -9,5 +9,6 @@ export function mountModelViewer({canvas,draw,active=()=>true,kind='character',o
   function resize(){const rect=canvas.getBoundingClientRect();if(rect.width<=0||rect.height<=0)return;const width=Math.min(900,Math.max(320,Math.round(rect.width))),height=Math.max(180,Math.round(width*rect.height/rect.width));if(canvas.width!==width||canvas.height!==height){canvas.width=width;canvas.height=height;request();}}
   const observer=new ResizeObserver(resize);observer.observe(canvas);resize();
   for(const [name,fn] of Object.entries(handlers))canvas.addEventListener(name,fn,{passive:false});request();
-  return {adjust,dispose(){disposed=true;observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);pointer=null;for(const [name,fn] of Object.entries(handlers))canvas.removeEventListener(name,fn);canvas.width=1;canvas.height=1;}};
+  const timer=animated?setInterval(request,1000/15):null;
+  return {adjust,dispose(){disposed=true;if(timer!==null)clearInterval(timer);observer.disconnect();if(frame!==null)cancelAnimationFrame(frame);pointer=null;for(const [name,fn] of Object.entries(handlers))canvas.removeEventListener(name,fn);canvas.width=1;canvas.height=1;}};
 }

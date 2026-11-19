@@ -93,7 +93,11 @@ export class NetworkProjectileMotion{
   }
   load(sample){
     sample.loading=true;
-    sample.ready=Promise.resolve().then(()=>this.game._prepareWeapon?.(sample.weaponId)).then(templates=>{
+    sample.ready=Promise.resolve().then(()=>{
+      const owner=this.actors.get(sample.ownerId);
+      if(owner?.weaponId===sample.weaponId&&owner.weaponModel)return [owner.weaponModel];
+      return this.game._prepareWeapon?.(sample.weaponId);
+    }).then(templates=>{
       if(this.disposed||this.samples.get(sample.key)!==sample||!templates?.[0])return;
       const visual=templates[0].clone(true);visual.visible=true;visual.rotation.set(0,0,0);visual.position.set(0,0,0);visual.scale.setScalar(.08);
       visual.position.sub(new THREE.Box3().setFromObject(visual).getCenter(new THREE.Vector3()));

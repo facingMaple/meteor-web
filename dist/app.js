@@ -55,7 +55,7 @@ let currentMode='training',currentMissionId=prefs.mission,currentLowBandwidth=fa
 let dialogueTimer=null,dialogueQueue=[];
 let loadingMatch=false,characterSelectionBusy=false;
 let game,running=false,paused=false,ended=false,modalKind='',toastTimer,announcementTimer,hitTimer,lastCombo=0,lastHp=100;
-let disposeModelViewer=null,modelViewer=null;
+let modelViewer=null;
 let nativeCombat=null,menuSnapshots,gamePromise;
 function displayScenery(id){
   const selected=canonicalMap(prefs.map),image=sceneryImage(id);
@@ -77,8 +77,6 @@ function updateLoadoutPreview() {
     portrait.hidden = true;
     portrait.removeAttribute('src');
   }
-  $('#weapon-preview-title').textContent = nativeWeaponAppearanceName(prefs.weapon,prefs.weaponAppearances[prefs.weapon]);
-  $('#weapon-preview-status').textContent = '选择「3D 查看」可载入模型';
 }
 
 function applyWeaponAppearancePreferences(instance){
@@ -86,8 +84,7 @@ function applyWeaponAppearancePreferences(instance){
 }
 
 function releaseMenuSnapshots() {
-  disposeModelViewer?.();
-  disposeModelViewer = null;
+  modelViewer?.dispose();
   modelViewer = null;
   scenery.stop();
   menuSnapshots?.clear();
@@ -166,7 +163,14 @@ const music=new Audio();music.loop=true;music.volume=.18;music.preload='none';le
 function syncMusic(){const mapId=({sifang:'sn06',cave:'sn01',forge:'sn10'}[prefs.map]||prefs.map);const mission=currentMode==='story'?getNativeMission(currentMissionId):null;const track=running?(mission?.music||(mapId==='sn01'?'s1.mp3':mapId==='sn10'?'s10.mp3':'s6.mp3')):'menu.mp3';if(musicTrack!==track){musicTrack=track;music.src='./assets/original/sounds/music/'+track;}if(prefs.muted||document.hidden)music.pause();else music.play().catch(()=>{});}
 let priorFocus=null;
 const modal=$('#modal');
-modal.addEventListener('close',()=>{if(modal.open)return;disposeModelViewer?.();disposeModelViewer=null;modelViewer=null;modal.classList.remove('model-viewer-dialog');syncScenery();});
+modal.addEventListener('close', () => {
+  if (modal.open) return;
+  modelViewer?.dispose();
+  modelViewer = null;
+  modal.classList.remove('model-viewer-dialog');
+  modal.removeAttribute('aria-labelledby');
+  syncScenery();
+});
 scenery.setPaused(window.matchMedia('(prefers-reduced-motion: reduce)').matches);
 if(scenery.paused){const control=$('[data-scenery-action="pause"]');control.setAttribute('aria-pressed','true');control.setAttribute('aria-label','播放背景轮换');control.textContent='▶';}
 const toast=text=>{clearTimeout(toastTimer);$('#toast').textContent=text;$('#toast').classList.add('show');toastTimer=setTimeout(()=>$('#toast').classList.remove('show'),2800);};
@@ -326,18 +330,71 @@ function selectMap(id) {
   syncScenery();
 }
 
-async function openModelViewer(kind){
-  if(running||loadingMatch||characterSelectionBusy)return;
-  disposeModelViewer?.();scenery.stop();modalKind='model-viewer';
-  $('#modal-content').innerHTML=`<h2 class="modal-title">${kind==='character'?appearanceCharacterName(prefs.character,prefs.characterAppearance):$('#weapon-preview-title').textContent}</h2><p class="viewer-hint">拖拽旋转 · 滚轮缩放 · 双击复位</p><canvas id="model-viewer-canvas" width="720" height="540" tabindex="0" aria-label="${kind==='character'?'人物':'兵器'}三维预览，可拖拽旋转，方向键旋转，加减键缩放"></canvas><div class="viewer-actions"><button data-view-action="left" aria-label="向左旋转">↶</button><button data-view-action="right" aria-label="向右旋转">↷</button><button data-view-action="out" aria-label="缩小模型">−</button><button data-view-action="in" aria-label="放大模型">＋</button><button data-view-action="reset">复位</button></div><p id="viewer-status" role="status"></p>`;
-  if(!modal.open){priorFocus=document.activeElement;modal.showModal();}
-  modal.classList.add('model-viewer-dialog');
-  const canvas = $('#model-viewer-canvas'), status = $('#viewer-status');
-  const active = () => canvas.isConnected && modal.open && !running && !loadingMatch && modalKind === 'model-viewer';
+async function openModelViewer() {
+  if (running || loadingMatch || characterSelectionBusy || modal.open) return;
+  scenery.stop();
+  modalKind = 'model-viewer';
+  priorFocus = document.activeElement;
   const selection = battleCharacterSelection(prefs);
-  const { weapon } = prefs, weaponAppearance=prefs.weaponAppearances[weapon];
+  const { weapon } = prefs, weaponAppearance = prefs.weaponAppearances[weapon];
   const key = [selection.character, selection.characterAppearance, weapon, weaponAppearance].join(':');
-  status.textContent = '正在载入所选模型…';
+  const content = $('#modal-content');
+  content.innerHTML = `
+    <h2 class="modal-title" id="viewer-title">人物与武器预览</h2>
+    <p class="viewer-loadout" id="viewer-loadout"></p>
+    <div class="viewer-switch" role="group" aria-label="预览视角">
+      <button type="button" data-preview-mode="character" aria-pressed="true" disabled>人物持武器</button>
+      <button type="button" data-preview-mode="weapon" aria-pressed="false" disabled>武器特写</button>
+    </div>
+    <div class="viewer-stage">
+      <canvas id="model-viewer-canvas" width="720" height="540" tabindex="-1" aria-busy="true" aria-label="人物持武器的三维预览" aria-describedby="viewer-hint"></canvas>
+      <div class="viewer-feedback" id="viewer-feedback" role="status">
+        <span class="viewer-spinner" aria-hidden="true"></span>
+        <strong id="viewer-status">正在加载人物和武器…</strong>
+        <small id="viewer-wait">首次预览可能需要几秒，请稍候。</small>
+      </div>
+    </div>
+    <p class="viewer-hint" id="viewer-hint">拖拽或方向键旋转 · 滚轮或加减键缩放 · 双击复位</p>
+    <div class="viewer-actions" aria-label="预览操作" role="group">
+      <button type="button" data-view-action="left" aria-label="向左旋转" disabled>↶</button>
+      <button type="button" data-view-action="right" aria-label="向右旋转" disabled>↷</button>
+      <button type="button" data-view-action="out" aria-label="缩小模型" disabled>−</button>
+      <button type="button" data-view-action="in" aria-label="放大模型" disabled>＋</button>
+      <button type="button" data-view-action="reset" disabled>复位</button>
+    </div>`;
+  $('#viewer-loadout').textContent = [
+    appearanceCharacterName(selection.character, selection.characterAppearance),
+    nativeWeaponAppearanceName(weapon, weaponAppearance)
+  ].join(' · ');
+  modal.classList.add('model-viewer-dialog');
+  modal.setAttribute('aria-labelledby', 'viewer-title');
+  modal.showModal();
+
+  const canvas = $('#model-viewer-canvas');
+  const feedback = $('#viewer-feedback'), status = $('#viewer-status'), wait = $('#viewer-wait');
+  const spinner = feedback.querySelector('.viewer-spinner');
+  const modes = content.querySelectorAll('[data-preview-mode]');
+  const controls = content.querySelectorAll('[data-view-action]');
+  const active = () => canvas.isConnected && modal.open && !running && !loadingMatch && modalKind === 'model-viewer';
+  function updateFeedback(message, loading) {
+    canvas.setAttribute('aria-busy', String(loading));
+    canvas.tabIndex = message ? -1 : 0;
+    status.textContent = message;
+    spinner.hidden = !loading;
+    wait.hidden = !loading;
+    feedback.hidden = !message;
+    for (const button of controls) button.disabled = Boolean(message);
+  }
+  function showError(error) {
+    if (active()) {
+      modelViewer?.dispose();
+      modelViewer = null;
+      updateFeedback('预览暂不可用，请关闭后重试。', false);
+    }
+    console.warn(error);
+  }
+  canvas.addEventListener('dblclick', () => modelViewer?.adjust('reset'));
+
   try {
     const [engine, { MenuSnapshots }, { mountModelViewer }] = await Promise.all([
       ensureGame(), import('./menu-snapshots.js'), import('./model-viewer.js')
@@ -349,18 +406,41 @@ async function openModelViewer(kind){
     await engine.setCharacter(selection.character, selection.characterAppearance);
     if (!active()) return;
     menuSnapshots ||= new MenuSnapshots(engine);
-    const animated = kind === 'weapon' && nativeWeaponAppearance(weapon, weaponAppearance)?.collection === 'festive';
-    modelViewer = mountModelViewer({ canvas, kind, active, animated, draw: view => {
-      if (animated) engine.collectionWeapons?.update(performance.now() / 1000);
-      return kind === 'character' ? menuSnapshots.character(key, view, canvas) : menuSnapshots.weapon(key, view, canvas);
-    },
-      onError: error => { status.textContent = '预览暂不可用，请关闭后重试'; console.warn(error); } });
-    status.textContent = '';
-    canvas.addEventListener('dblclick', () => modelViewer?.adjust('reset'));
-    disposeModelViewer = () => { modelViewer?.dispose(); };
+    const animated = nativeWeaponAppearance(weapon, weaponAppearance)?.collection === 'festive'
+      && !matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    function showView(kind) {
+      modelViewer?.dispose();
+      for (const button of modes) button.setAttribute('aria-pressed', String(button.dataset.previewMode === kind));
+      canvas.setAttribute('aria-label', kind === 'character' ? '人物持武器的三维预览' : '武器特写的三维预览');
+      updateFeedback('正在绘制预览…', true);
+      const viewer = mountModelViewer({
+        canvas, kind, active, animated,
+        async draw(view) {
+          if (animated) engine.collectionWeapons?.update(performance.now() / 1000);
+          const frame = kind === 'character'
+            ? await menuSnapshots.character(key, view, canvas)
+            : await menuSnapshots.weapon(key, view, canvas);
+          if (!active() || modelViewer !== viewer) return;
+          if (!frame) throw new Error('模型预览未生成图像');
+          if (!feedback.hidden) updateFeedback('', false);
+        },
+        onError(error) {
+          if (modelViewer === viewer) showError(error);
+        }
+      });
+      modelViewer = viewer;
+    }
+    for (const button of modes) {
+      button.disabled = false;
+      button.addEventListener('click', () => {
+        if (!active() || button.getAttribute('aria-pressed') === 'true' && modelViewer) return;
+        showView(button.dataset.previewMode);
+      });
+    }
+    showView('character');
   } catch (error) {
-    if (active()) status.textContent = '预览暂不可用，请关闭后重试';
-    console.warn(error);
+    showError(error);
   }
 }
 const pageKinds=new Set(['network','mission','guide','resources','settings']);
@@ -522,7 +602,9 @@ function handleEnd(r){
 function toggleSound(){prefs.muted=!prefs.muted;game?.setMuted(prefs.muted);syncMusic();save();updateSelection();if(modalKind==='settings'||!running&&lobbyPage==='settings')openModal('settings');}
 document.addEventListener('click',e=>{
   if(characterSelectionBusy||loadingMatch)return;
-  const modelButton=e.target.closest('[data-model-view]');if(modelButton){openModelViewer(modelButton.dataset.modelView);return;}const viewAction=e.target.closest('[data-view-action]');if(viewAction){modelViewer?.adjust(viewAction.dataset.viewAction);return;}
+  if (e.target.closest('[data-model-view]')) { openModelViewer(); return; }
+  const viewAction = e.target.closest('[data-view-action]');
+  if (viewAction) { modelViewer?.adjust(viewAction.dataset.viewAction); return; }
   const sceneryButton=e.target.closest('[data-scenery]');if(sceneryButton){scenery.choose(sceneryButton.dataset.scenery);return;}const sceneryAction=e.target.closest('[data-scenery-action]');if(sceneryAction){const action=sceneryAction.dataset.sceneryAction;if(action==='pause'){scenery.setPaused(!scenery.paused);sceneryAction.setAttribute('aria-pressed',String(scenery.paused));sceneryAction.setAttribute('aria-label',scenery.paused?'播放背景轮换':'暂停背景轮换');sceneryAction.textContent=scenery.paused?'▶':'Ⅱ';}else scenery.step(action==='previous'?-1:1);return;}
   const route=e.target.closest('[data-route]');if(route){e.preventDefault();showLobbyPage(route.dataset.route);return;}
   const settingsChoice=e.target.closest('[data-settings-tab]');if(settingsChoice){settingsTab=settingsChoice.dataset.settingsTab;openModal('settings');return;}

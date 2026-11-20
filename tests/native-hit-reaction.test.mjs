@@ -8,6 +8,7 @@ import { MeteorGame } from '../dist/engine.js';
 import { loadNativeCombat, NativeCombatController, NativePoseTimeline, createNativeDamageResolver, nativeReactionParameters, nativeHitAngle, nativeHitSelection, nativeGuardPose, NATIVE_GUARD_REACTIONS, NATIVE_DEFAULT_BLEND_TIME } from '../dist/native-combat.js';
 import { NativeImpactFeedback } from '../dist/native-impact-feedback.js';
 import { NativeBloodFeedback } from '../dist/native-blood-feedback.js';
+import { loadNativeRageVfx } from '../dist/native-rage-vfx.js';
 import { RAGE_BURST } from '../dist/rage-burst.js';
 import { NetworkGame } from '../dist/network-game.js';
 import {bindLocalPlayerControl} from '../dist/player-control.js';
@@ -76,7 +77,7 @@ test('front guard follows the original CRT53-bit draw distribution, including th
 });
 after(() => {
   for (const { game, floor } of fixtures) {
-    game.projectiles?.dispose(); game.impactFeedback?.dispose(); game.bloodFeedback?.dispose(); for (const actor of [game.hero, ...game.enemies]) actor.character.dispose();
+    game.rageVfx?.dispose(); game.projectiles?.dispose(); game.impactFeedback?.dispose(); game.bloodFeedback?.dispose(); for (const actor of [game.hero, ...game.enemies]) actor.character.dispose();
     for (const promise of game.weaponCache.values()) promise.then(model => model.traverse(node => {
       node.geometry?.dispose(); for (const material of Array.isArray(node.material) ? node.material : [node.material]) material?.dispose();
     }));
@@ -117,53 +118,28 @@ function tick(game, dt = 1 / 60) {
   game.projectiles.update(dt);
 }
 
-function trackBurstAudio(game) {
+async function trackBurstAudio(game) {
   const played = [];
-  game.master = { gain: { value: .25 } };
+  game.rageVfx = await loadNativeRageVfx(game.scene);
+  const manifest = JSON.parse(await readFile(new URL('assets/original/manifest.json',dist),'utf8'));
+  game.effectDefinitions = new Map(manifest.sounds.effectDefinitions.map(file=>[file.id.toLowerCase(),file]));
+  game.waveFiles = new Map(manifest.sounds.effects.map(file=>[file.id.toLowerCase(),file]));
+  game.master = { gain: {value:.25} };
   game.audio = {
-    state: 'running', sampleRate: 48000,
-    createBuffer(channels, length) {
-      assert.equal(channels, 1);
-      const samples = new Float32Array(length);
-      return { getChannelData: () => samples };
-    },
+    state:'running', currentTime:1,
     createBufferSource() {
-      return {
-        connect(output) { assert.equal(output, game.master); },
-        disconnect() {},
-        start() { played.push(this.buffer.getChannelData(0)); }
-      };
+      return { connect(output) { assert.equal(output,game.master); }, disconnect() {},
+        start(at,offset) { if(['sfboom01','w06fir03'].includes(this.buffer.id)) played.push({id:this.buffer.id,at,offset}); } };
     }
   };
+  game._loadSoundBuffer = async file => ({id:file.id,duration:2});
+  game._soundDefinition = MeteorGame.prototype._soundDefinition.bind(game);
   return played;
-}
-
-function checkBurstRender(game, actor) {
-  const skeleton = actor.character.mesh.skeleton;
-  const bones = ['bau_L_Hand', 'bau_R_Hand', 'bau_Spine1'].map(name =>
-    skeleton.getBoneByName(name) ?? skeleton.getBoneByName('source-display_' + name));
-  const position = bone => bone.getWorldPosition(v());
-  const baseline = bones.map(position);
-  const weaponBefore = actor.character.getVisualAttachmentMatrix('d_wpnR');
-  const renderer = game.renderer;
-  try {
-    game.renderer = { render() {
-      assert.ok(position(bones[0]).distanceTo(baseline[0]) > .16, 'the left arm moves on screen');
-      assert.ok(position(bones[1]).distanceTo(baseline[1]) > .16, 'the right arm moves on screen');
-      assert.ok(position(bones[2]).y > baseline[2].y + .06, 'the torso rises on release');
-      assert.notDeepEqual(actor.character.getVisualAttachmentMatrix('d_wpnR').elements, weaponBefore.elements);
-    } };
-    game._renderScene();
-  } finally {
-    game.renderer = renderer;
-  }
-  assert.deepEqual(bones.map(position), baseline, 'combat pose is restored after drawing');
-  assert.deepEqual(actor.character.getVisualAttachmentMatrix('d_wpnR').elements, weaponBefore.elements);
 }
 
 test('burst escapes standing hitstun, plays through recovery and knocks nearby enemies down', async () => {
   const { game, hero, target } = await fixture();
-  const played = trackBurstAudio(game);
+  const played = await trackBurstAudio(game);
   const addFighter = async (name, position, team = 2) => {
     const actor = await game._createFighter(8, name, false, team);
     game.enemies.push(actor);
@@ -193,20 +169,18 @@ test('burst escapes standing hitstun, plays through recovery and knocks nearby e
     hero.rage = RAGE_BURST.cost;
     const hp = [hero, ...game.enemies].map(actor => actor.hp);
     assert.equal(game.action('burst'), true);
-    assert.equal(played.length, 1);
-    const [wave] = played;
-    assert.equal(wave.length, 15360);
-    assert.ok(wave.some(sample => Math.abs(sample) > .25));
-    assert.ok(wave.every(sample => Number.isFinite(sample) && Math.abs(sample) <= 1));
-    assert.ok(Math.abs(wave.at(-1)) < .001);
-    const { group } = game.effects[0].pulse;
-    const wake = group.children.find(mesh => mesh.geometry.type === 'CylinderGeometry');
-    const initialRadius = wake.scale.x;
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.deepEqual(played.map(sound=>sound.id),['sfboom01','w06fir03']);
+    assert.ok(Math.abs(played[0].at-1-.0033333334)<1e-6);
+    assert.ok(Math.abs(played[1].at-1-.0366666652)<1e-6);
+    assert.equal(hero.combat.timeline.pose.id,367);
+    const initialFrame=hero.character.frame;
+    const initialHead=hero.character.getAttachment('bau_Head').getWorldPosition(v()).y;
     assert.equal(hero.rage, 0);
     assert.equal(hero.combat.reactionPhase, null);
-    assert.equal(hero.combat.actionLocked, true);
-    assert.equal(target.combat.attacking, false);
-    assert.equal(rear.combat.attacking, false);
+    assert.equal(hero.combat.busy, true);
+    assert.equal(target.combat.reactionPhase, 'hit');
+    assert.equal(rear.combat.reactionPhase, 'hit');
     assert.equal(ally.combat.reactionPhase, null);
     assert.equal(covered.combat.reactionPhase, null);
     assert.equal(guarding.combat.reactionPhase, 'guard');
@@ -215,7 +189,8 @@ test('burst escapes standing hitstun, plays through recovery and knocks nearby e
     game.action('attack');
     game.action('jump');
     game.action('jump', false);
-    for (let i = 0; i < 15; i++) tick(game);
+    let peakHead=initialHead;
+    for (let i = 0; i < 15; i++) { tick(game); peakHead=Math.max(peakHead,hero.character.getAttachment('bau_Head').getWorldPosition(v()).y); }
     game._updatePresentation(.05);
     assert.ok(Math.abs(game.effects[0].life - (RAGE_BURST.effectTime - .25)) < 1e-6,
       'a delayed render keeps the wave synchronized with the fixed combat clock');
@@ -224,15 +199,16 @@ test('burst escapes standing hitstun, plays through recovery and knocks nearby e
       game._updatePresentation(1 / 60);
     }
     game.action('forward', false);
-    assert.equal(hero.grounded, true);
-    assert.equal(hero.root.position.z, 0, 'held movement cannot cancel the burst');
-    assert.equal(hero.combat.attacking, false);
-    assert.equal(hero.combat.actionLocked, true, 'burst action outlasts the previous short flash');
-    assert.ok(wake.scale.x > initialRadius && wake.scale.y > 0);
-    assert.equal(group.parent, game.scene);
-    checkBurstRender(game, hero);
-    assert.ok(target.root.position.z > 1.3 && target.root.position.z < 1.85);
-    assert.ok(rear.root.position.x < -3.9);
+    assert.equal(hero.combat.timeline.pose.id,367, 'input does not replace the source burst');
+    assert.ok(hero.character.frame>initialFrame);
+    assert.ok(peakHead>initialHead+.8,
+      'the actual source animation raises the body');
+    assert.equal(hero.combat.busy,true);
+    const effect=game.rageVfx.actors.get(hero);
+    assert.equal(effect.id,'pos367');
+    assert.equal(effect.nodes.filter(node=>node.mesh).length,3);
+    assert.ok(target.root.position.distanceTo(hero.root.position)>1.1);
+
     hero.rage = RAGE_BURST.cost;
     assert.equal(game.action('burst'), false, 'a second burst cannot cancel the first');
     const phases = new Map([[target, new Set()], [rear, new Set()]]);
@@ -253,12 +229,12 @@ test('burst escapes standing hitstun, plays through recovery and knocks nearby e
     assert.equal(rear.combat.reacting, false);
     assert.equal(hero.combat.busy, false);
     assert.equal(game.effects.length, 0);
-    assert.equal(group.parent, null);
     assert.deepEqual([hero, ...game.enemies].map(actor => actor.hp), hp);
     assert.equal(hit(game, covered, hero, 262), true, 'the guard against immediate followups wears off');
     game.muted = true;
     assert.equal(game.action('burst'), true);
-    assert.equal(played.length, 1, 'muting the game prevents the burst sound');
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(played.length, 2, 'muting prevents the original burst samples');
   } finally {
     game._clearBurstEffects();
     wall.geometry.dispose();
@@ -277,7 +253,7 @@ test('guest burst input uses host rage and replicates the red pulse and knockdow
   const host = new NetworkGame(game, { host: true, playerId: a.playerId, send() {} }, room);
   host.play();
   const replica = await fixture();
-  const played = trackBurstAudio(replica.game);
+  const played = await trackBurstAudio(replica.game);
   assert.equal((await replica.hero.character.setAppearance('liuchao-mint')).appearance, 'liuchao-mint');
   replica.hero.networkId = b.playerId;
   replica.target.networkId = a.playerId;
@@ -295,16 +271,18 @@ test('guest burst input uses host rage and replicates the red pulse and knockdow
     call(a, 'sync', { frame });
     const published = call(b, 'sync').frame;
     assert.equal(published.impacts.filter(event => event.kind === 'rage-burst').length, 1);
-    assert.ok(hero.root.position.z < -2.7);
+    assert.ok(hero.root.position.z < -.1);
     client.apply(published);
     assert.equal(replica.hero.rage, target.rage);
     assert.equal(replica.game.effects.length, 1);
     assert.ok(replica.game.effects[0].life < RAGE_BURST.effectTime - .25, 'a guest resumes the pulse at the host timestamp');
-    checkBurstRender(replica.game, replica.hero);
+    assert.equal(replica.hero.combat.timeline.pose.id,367);
+    assert.equal(replica.game.rageVfx.actors.get(replica.hero).id,'pos367');
     call(a, 'sync', { frame: host.snapshot() });
     client.apply(call(b, 'sync').frame);
     assert.equal(replica.game.effects.length, 1, 'replica snapshots do not restart the pulse');
-    assert.equal(played.length, 1, 'replica snapshots do not replay the sound');
+    await new Promise(resolve=>setImmediate(resolve));
+    assert.equal(played.length, 2, 'snapshots play each original sound only once');
     for (let i = 0; i < 60 && hero.combat.reactionPhase !== 'down'; i++) tick(game);
     assert.equal(hero.combat.reactionPhase, 'down');
     call(a, 'sync', { frame: host.snapshot() });

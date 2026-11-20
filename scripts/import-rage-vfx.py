@@ -83,6 +83,10 @@ def read_effect(path, include_particles=False):
         cursor+=blob
         if cursor>end: raise ValueError('EF blob exceeds node')
         node = dict(type=kind,name=name,flags=list(flags),bindings=bindings,texture=texture.lower(),keys=keys,offset=offset)
+        if kind=='AUDIO':
+            references=re.findall(rb'[A-Za-z0-9_]+\.wav',data[offset:end],re.I)
+            if len(references)!=1:raise ValueError(f'Unexpected AUDIO reference: {path}:{name}')
+            node['sound']=references[0].decode('ascii').lower()
         if any(uv_speed):node['uvSpeed']=uv_speed
         if hidden:node['hidden']=True
         node['blend']=blend

@@ -134,23 +134,23 @@
   <script>
     if((location.hostname==='linfengya.cn'||location.hostname==='www.linfengya.cn')&&location.pathname.startsWith('/lx'))fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:location.pathname}),keepalive:true}).catch(()=>{});
   </script>
-  <script src="./analytics.js?v=20261120-analytics"></script>
+  <script src="./analytics.js?v=sealed-v1"></script>
   <script type="importmap">
     {"imports":{
-      "./engine.js":"./engine.js?v=20261120-red-burst",
+      "./engine.js":"./engine.js?v=20261120-native-burst",
       "./network-lobby.js":"./network-lobby.js?v=20261113-load",
-      "./network-game.js":"./network-game.js?v=20261120-red-burst",
+      "./network-game.js":"./network-game.js?v=20261120-native-burst",
       "./character-appearances.js":"./character-appearances.js?v=20261116-outfits",
       "./character-catalog.js":"./character-catalog.js?v=20261116-training",
-      "./native-character.js":"./native-character.js?v=20261120-burst-presentation",
+      "./native-character.js":"./native-character.js?v=20261120-native-burst",
       "./native-combat.js":"./native-combat.js?v=20261120-red-burst",
+      "./native-effect-transforms.js":"./native-effect-transforms.js?v=20261120-native-burst",
       "./native-blood-feedback.js":"./native-blood-feedback.js?v=20261119-subtle",
       "./native-rage-vfx.js":"./native-rage-vfx.js?v=20261120-skill-fx",
       "./native-weapon-trails.js":"./native-weapon-trails.js?v=20261120-skill-fx",
       "./weapon-skill-accents.js":"./weapon-skill-accents.js?v=20261120-skill-fx",
       "./qiyun-courtyard.js":"./qiyun-courtyard.js?v=20261113-load",
-      "./rage-burst.js":"./rage-burst.js?v=20261120-red-burst",
-      "./rage-burst-presentation.js":"./rage-burst-presentation.js?v=20261120-red-burst",
+      "./rage-burst.js":"./rage-burst.js?v=20261120-native-burst",
       "./keybindings.js":"./keybindings.js?v=20261120-burst",
       "./native-weapon-appearances.js":"./native-weapon-appearances.js?v=20261119-weapon-collection",
       "./weapon-collection-catalog.js":"./weapon-collection-catalog.js?v=20261119-weapon-names",

@@ -1,6 +1,5 @@
 import { unpackNativeAnimation } from './native-animation-pack.js';
 import * as THREE from './vendor/three.module.js';
-import { applyRageBurstPose } from './rage-burst-presentation.js';
 import { parsePos } from './native-combat.js';
 import { createHairSprings, validateHairRig } from './hair-springs.js';
 import {createProportionalRig,validateProportionalRig} from './proportional-rig.js';
@@ -324,18 +323,6 @@ export function createNativeCharacter(data,options={}){
     updateSecondaryMotion(dt);
   }
   function updateSecondaryMotion(dt,settings={}){syncDisplayRig();visuals.get(appearance)?.secondaryMotion?.update(dt,settings);syncVisualAttachments();}
-  function beginRageBurstPose(progress) {
-    const restore = applyRageBurstPose(resolve, progress);
-    if (!restore) return null;
-    const sync = () => {
-      group.updateMatrixWorld(true);
-      skeleton.update();
-      syncDisplayRig();
-      syncVisualAttachments();
-    };
-    sync();
-    return () => { restore(); sync(); };
-  }
   function resetSecondaryMotion(){visuals.get(appearance)?.secondaryMotion?.reset();}
   function setSecondaryMotionEnabled(enabled){secondaryMotionEnabled=!!enabled;const visual=visuals.get(appearance);visual?.secondaryMotion?.setEnabled(secondaryMotionEnabled&&!visual.proportionalRig?.restPose);}
   function applyVisual(key){
@@ -386,7 +373,7 @@ export function createNativeCharacter(data,options={}){
     }
     return {...appearanceState};
   }
-  const api={nativeCharacterId:data.id,group,get mesh(){return mesh;},skeleton,bones:boneNodes,dummies:dummyNodes,nativeSpace,poses:data.poses,combatPoses:data.combatPoses,animations:data.animations,source:1,frame:1,onPoseUpdate(listener){poseListeners.add(listener);return()=>poseListeners.delete(listener);},update,updateSecondaryMotion,beginRageBurstPose,resetSecondaryMotion,setSecondaryMotionEnabled,get secondaryMotionStatus(){return visuals.get(appearance)?.secondaryMotion?.status||{available:false,enabled:false};},getSecondaryMotionSnapshot(){return visuals.get(appearance)?.secondaryMotion?.snapshot()||[];},playPose,setPoseFrame,setPoseBlend,capturePose,sampleRoot,sampleSceneMotion,setAppearance,get appearance(){return appearance;},get appearanceStatus(){return {...appearanceState};},getAttachment:name=>byName.get(name)||resolve(name),getVisualAttachmentMatrix,registerVisualAttachment,setSourceRestPose(value){const visual=visuals.get(appearance),rig=visual?.proportionalRig;if(!rig)return false;rig.setRestPose(value);visual.secondaryMotion?.setEnabled(!value&&secondaryMotionEnabled);syncVisualAttachments();return true;},get sourceRestAvailable(){return !!visuals.get(appearance)?.proportionalRig;},get sourceRestPose(){return visuals.get(appearance)?.proportionalRig?.restPose||false;},get finished(){return animationState.finished;},get currentPose(){return animationState.pose?.id??null;},getAttachmentPosition(name,target=new THREE.Vector3()){return resolve(name)?.getWorldPosition(target)||null;},dispose(){if(disposed)return;disposed=true;++appearanceRequest;blendCache=null;poseListeners.clear();for(const visual of visuals.values())visual.dispose();visuals.clear();visualAttachments.clear();visualSockets.clear();skeleton.dispose();group.removeFromParent();}};
+  const api={nativeCharacterId:data.id,group,get mesh(){return mesh;},skeleton,bones:boneNodes,dummies:dummyNodes,nativeSpace,poses:data.poses,combatPoses:data.combatPoses,animations:data.animations,source:1,frame:1,onPoseUpdate(listener){poseListeners.add(listener);return()=>poseListeners.delete(listener);},update,updateSecondaryMotion,resetSecondaryMotion,setSecondaryMotionEnabled,get secondaryMotionStatus(){return visuals.get(appearance)?.secondaryMotion?.status||{available:false,enabled:false};},getSecondaryMotionSnapshot(){return visuals.get(appearance)?.secondaryMotion?.snapshot()||[];},playPose,setPoseFrame,setPoseBlend,capturePose,sampleRoot,sampleSceneMotion,setAppearance,get appearance(){return appearance;},get appearanceStatus(){return {...appearanceState};},getAttachment:name=>byName.get(name)||resolve(name),getVisualAttachmentMatrix,registerVisualAttachment,setSourceRestPose(value){const visual=visuals.get(appearance),rig=visual?.proportionalRig;if(!rig)return false;rig.setRestPose(value);visual.secondaryMotion?.setEnabled(!value&&secondaryMotionEnabled);syncVisualAttachments();return true;},get sourceRestAvailable(){return !!visuals.get(appearance)?.proportionalRig;},get sourceRestPose(){return visuals.get(appearance)?.proportionalRig?.restPose||false;},get finished(){return animationState.finished;},get currentPose(){return animationState.pose?.id??null;},getAttachmentPosition(name,target=new THREE.Vector3()){return resolve(name)?.getWorldPosition(target)||null;},dispose(){if(disposed)return;disposed=true;++appearanceRequest;blendCache=null;poseListeners.clear();for(const visual of visuals.values())visual.dispose();visuals.clear();visualAttachments.clear();visualSockets.clear();skeleton.dispose();group.removeFromParent();}};
   api.ready=originalVisual.ready.then(async()=>{if(options.appearance&&options.appearance!=='original'&&appearanceRequest===0)await setAppearance(options.appearance);});
   playPose(0,{loop:true});return api;
 }

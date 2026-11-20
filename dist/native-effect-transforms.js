@@ -8,7 +8,7 @@ const NATIVE_WORLD = NATIVE_TO_WEB.clone().scale(new THREE.Vector3().setScalar(.
 const UNIT = new THREE.Vector3(1, 1, 1);
 let manifestPromise;
 export function loadNativeEffectManifest() {
-  return manifestPromise ||= fetch(new URL('manifest.json', ROOT)).then(response => {
+  return manifestPromise ||= fetch(new URL('manifest.json?v=20261120-native-burst', ROOT)).then(response => {
     if (!response.ok) throw new Error('Original effect manifest unavailable');
     return response.json();
   }).catch(error => { manifestPromise = null; throw error; });

@@ -35,8 +35,7 @@ import { WeaponCollectionAssets } from './weapon-collection-assets.js';
 import { sweepActorCapsule, NativeProjectileSystem, aimNativeDart, NATIVE_DART_PROFILE, NativeMusketSystem, NATIVE_MUSKET_PROFILE, NativeWheelSystem, NATIVE_WHEEL_PROFILE } from './native-projectiles.js';
 import { NativeImpactFeedback } from './native-impact-feedback.js';
 import { NativeBloodFeedback, bloodStyleForHit } from './native-blood-feedback.js';
-import { RAGE_BURST, RAGE_BURST_FALL, canRageBurst } from './rage-burst.js';
-import { createRageBurstPulse, playRageBurstSound } from './rage-burst-presentation.js';
+import { RAGE_BURST, canRageBurst } from './rage-burst.js';
 import { loadNativePoisonFeedback } from './native-poison-feedback.js';
 import { loadNativeRageVfx } from './native-rage-vfx.js';
 import { loadNativeEffectManifest } from './native-effect-transforms.js';
@@ -360,7 +359,6 @@ export class MeteorGame {
     f.musketAim=false; f.nativeJump = null; f.jumpSequence = null; f.wallRun = null; f.wallKick = null; f.wallEntries = 0;
     f.actionMomentum=null;f.motionVelocity?.set(0,0,0);
     f.rageBurstUntil = 0;
-    f.rageBurstPush = null;
     f.wallJumpReady=false;f.wallJumpAge=0;
     f.standingTurn=null;f.nativeAirGroundContact=false;
     const p = spawn?.position || this.currentMap.spawns[0].position; f.root.position.copy(p);
@@ -630,15 +628,6 @@ export class MeteorGame {
     }
     else{const desired=f.wallRun?f.wallRun.velocity:direction.clone().multiplyScalar(speed);if(this._controlFor(f))f.velocity.copy(desired);else f.velocity.lerp(desired,1-Math.exp(-dt*14));}
     let dx = f.velocity.x * dt + (motion?.x || 0), dz = f.velocity.z * dt + (motion?.z || 0), p = f.root.position;
-    const push = f.rageBurstPush;
-    if (push) {
-      const previous = push.remaining;
-      push.remaining = Math.max(0, previous - dt);
-      const distance = RAGE_BURST.pushDistance * (previous ** 2 - push.remaining ** 2) / RAGE_BURST.pushTime ** 2;
-      dx += push.x * distance;
-      dz += push.z * distance;
-      if (!push.remaining) f.rageBurstPush = null;
-    }
     const momentum=actionMotion&&f.actionMomentum;
     if(momentum){
       momentum.x=nativeActionMomentum(momentum.x,dt,f.grounded);momentum.z=nativeActionMomentum(momentum.z,dt,f.grounded);
@@ -1028,7 +1017,7 @@ export class MeteorGame {
   }
   _clearDroppedWeapons(){for(const drop of this.droppedWeapons?.values()||[])drop.root.removeFromParent();this.droppedWeapons?.clear();this.replicaLootDesired=new Map();this.combatFeedbackEvents=[];this.bloodFeedback?.clear();this.poisonFeedback?.clear();this.slowFeedback?.clear();this._clearBurstEffects();}
   _clearBurstEffects() {
-    while (this.effects?.length) this.effects.pop().pulse.dispose();
+    if (this.effects) this.effects.length = 0;
   }
   _recordCombatFeedback(event) {
     this.combatFeedbackSerial = (this.combatFeedbackSerial || 0) + 1;
@@ -1042,14 +1031,11 @@ export class MeteorGame {
   _playCombatFeedback(event,local=false,caster=null,age=0){
     const point=v3(...event.point),direction=v3(...event.direction);
     if (event.kind === 'rage-burst') {
-      const pulse = createRageBurstPulse(point);
-      pulse.update(age / RAGE_BURST.effectTime);
-      this.scene.add(pulse.group);
       const actor = caster ?? (event.attackerId
         ? [this.hero, ...this.enemies].find(fighter => fighter?.networkId === event.attackerId)
         : null);
-      (this.effects ||= []).push({ pulse, actor, time: event.time, life: RAGE_BURST.effectTime - age });
-      if (!this.muted && !this.paused) playRageBurstSound(this.audio, this.master, age);
+      (this.effects ||= []).push({ actor, local, time: event.time, life: RAGE_BURST.effectTime - age });
+      this._soundDefinition('Pos367', { all: true, age });
       if (local) this._emit('爆气', 'info');
       return;
     }
@@ -1166,9 +1152,11 @@ export class MeteorGame {
       if (actor === this.hero) this._emit(`爆气需要 ${RAGE_BURST.cost} 点怒气`, 'info');
       return false;
     }
-    const poseId = actor.combat.stance;
+    const poseId = 367;
+    const attack = actor.combat.data.poses.get(poseId)?.attacks[0];
+    if (!attack) return false;
     if (!actor.combat.play(poseId, {
-      loop: true, force: true, actionLock: RAGE_BURST.actionTime,
+      force: true, motion: true,
       context: { kind: 'rage-burst', name: '爆气', poseId }
     })) return false;
     this._showCurrentCombatPose(actor);
@@ -1180,10 +1168,11 @@ export class MeteorGame {
     actor.standingTurn = null;
     actor.heldPose = null;
     actor.actionMomentum = null;
-    actor.rageBurstPush = null;
     actor.velocity.set(0, 0, 0);
     clearPlayerCommands(control);
 
+    this.effectContacts?.clearActor(actor);
+    this.rageVfx?.clearActor(actor);
     const origin = actor.root.position;
     for (const target of [this.hero, ...this.enemies]) {
       if (!target || target === actor || target.dead || target.disposed || target.scriptRemoved ||
@@ -1192,14 +1181,11 @@ export class MeteorGame {
       if (Math.abs(offset.y) > RAGE_BURST.height) continue;
       offset.y = 0;
       if (offset.lengthSq() > RAGE_BURST.radius ** 2 || !this.hasScriptLineOfSight(actor, target)) continue;
-      const hit = nativeHitSelection(RAGE_BURST_FALL, nativeHitAngle(origin, target.root.position, target.root.rotation.y));
+      const hit = nativeHitSelection(attack, nativeHitAngle(origin, target.root.position, target.root.rotation.y));
       const guarded = !!target.guard;
       const reaction = guarded ? nativeGuardPose(target.weapon, hit.direction, this.combatRandom || Math.random) : hit.poseId;
-      if (!target.combat.react(reaction, { guarded, motionScale: 0, fromPose: target.character?.capturePose?.() })) continue;
+      if (!target.combat.react(reaction, { guarded, ...nativeReactionParameters(attack, { guarded }), fromPose: target.character?.capturePose?.() })) continue;
 
-      if (offset.lengthSq() < 1e-8) offset.set(Math.sin(actor.root.rotation.y), 0, Math.cos(actor.root.rotation.y));
-      offset.normalize();
-      target.rageBurstPush = { x: offset.x, z: offset.z, remaining: RAGE_BURST.pushTime };
       target.hitstop = 0;
       target.musketAim = false;
       target.wallRun = null;
@@ -1506,12 +1492,13 @@ export class MeteorGame {
       if (!segment.blend && segment.serial !== f.lastSerial) {
         f.attackHits.clear(); f.lastSerial = segment.serial;
         const basicEmitter = { dart: NATIVE_DART_PROFILE, musket: NATIVE_MUSKET_PROFILE, wheel: NATIVE_WHEEL_PROFILE }[f.weapon];
-        if (segment.pose.attacks.length && !basicEmitter?.poseIds.includes(segment.pose.id)) this._soundDefinition(segment.pose.raw.fields.effectid);
+        if (segment.context?.kind !== 'rage-burst' && segment.pose.attacks.length && !basicEmitter?.poseIds.includes(segment.pose.id)) this._soundDefinition(segment.pose.raw.fields.effectid);
       }
       // A rendered frame can cross several narrow original attack windows.
       // Sample each window's authored frame, keeping its original index and
       // serial so multi-thrusts hit once per window, never once per render.
-      for (const attack of segment.attacks)this._resolveAttackWindow(f,segment,attack);
+      if (segment.context?.kind !== 'rage-burst')
+        for (const attack of segment.attacks)this._resolveAttackWindow(f,segment,attack);
       // 004ce410 pushes2 to004dc8c0: End-floor(frame)<2. Parameter18
       // applies near the final two source frames, independently of contact.
       // Resolve this host step's attack before committing lethal self damage.
@@ -1675,7 +1662,6 @@ export class MeteorGame {
       if(templates?.every(Boolean)){const session=this.sessionRequest,position=target.root.position.clone();Promise.all(templates).then(models=>{if(!this.disposed&&session===this.sessionRequest&&this.droppedWeapons.size<64)this._spawnDroppedWeapon(id,position,`web-drop-${++this.lootSerial}`,models);}).catch(()=>{});}}
     target.wallRun=null;target.wallKick=null;
     target.rageBurstUntil = 0;
-    target.rageBurstPush = null;
     if (target.dead) return; this.stealthFeedback?.clearActor(target); target.dead = true; target.guard = false; target.musketAim=false; target.hitstop = 0; target.respawn = this.mode === 'story' ? Infinity : 3; target.combat.play(this.combatData?.poses?.has(deathPose)?deathPose:NATIVE_LOCOMOTION.dead, { force: true,context:deathContext });
     clearPlayerCommands(this._controlFor(target));
     if (target.hero) this.deaths++; else if (awardKill) this.kills++;
@@ -1813,12 +1799,7 @@ export class MeteorGame {
         // The fixed world clock can advance farther than the render step after a hitch.
         const remaining = RAGE_BURST.effectTime - (this.matchElapsed - effect.time);
         effect.life = Math.max(0, Math.min(effect.life - feedbackStep, remaining));
-        if (effect.life) {
-          effect.pulse.update(1 - effect.life / RAGE_BURST.effectTime);
-        } else {
-          effect.pulse.dispose();
-          this.effects.splice(i, 1);
-        }
+        if (!effect.life) this.effects.splice(i, 1);
       }
       this.impactFeedback?.update(feedbackStep,this.camera);
       this.bloodFeedback?.update(feedbackStep,this.camera,this.renderer?.domElement?.height||900);
@@ -1834,22 +1815,19 @@ export class MeteorGame {
   _updateLoot(){if(this.running&&!this.paused&&!this.lootReplica)for(const actor of [this.hero,...this.enemies])if(actor&&this._controlFor(actor)&&actor.grounded)this._tryPickupActor(actor);}
   _renderScene() {
     if (!this.effects?.length) return this.renderer.render(this.scene, this.camera);
-    const restore = new Map();
+    const cameraY = this.camera.position.y;
     try {
-      for (let i = this.effects.length - 1; i >= 0; i--) {
-        const { actor, life } = this.effects[i];
-        if (!actor?.root.visible || actor.dead || actor.disposed || actor.scriptRemoved || !actor.grounded ||
-            actor.networkReactionPhase || restore.has(actor)) continue;
-        if (this.lootReplica ? actor.combat.busy : !actor.combat.actionLocked) continue;
-        const age = this.lootReplica ? RAGE_BURST.effectTime - life : RAGE_BURST.actionTime - actor.combat.actionLockRemaining;
-        if (age >= RAGE_BURST.actionTime) continue;
-        const undo = actor.character.beginRageBurstPose?.(age / RAGE_BURST.actionTime);
-        if (undo) restore.set(actor, undo);
-      }
+      // One short local kick, independent of how many opponents are hit.
+      const kick = this.effects.reduce((largest, effect) => {
+        const age = RAGE_BURST.effectTime - effect.life;
+        return effect.local && age < .14
+          ? Math.max(largest, Math.sin(age * 85 + .8) * .035 * Math.exp(-age * 22))
+          : largest;
+      }, 0);
+      this.camera.position.y += kick;
       return this.renderer.render(this.scene, this.camera);
     } finally {
-      // Simulation and hit detection always see the base poses.
-      for (const undo of restore.values()) undo();
+      this.camera.position.y = cameraY;
     }
   }
   _frame(timestamp) {
@@ -1903,7 +1881,7 @@ export class MeteorGame {
     // Decode the small native weapon WAV set ahead of contact. First-hit
     // feedback should not wait for a network request or audio decoding.
     const files = new Map();
-    for (const [name, definition] of this.effectDefinitions) if (/^w(?:00|01|02|03|04|05|06|07|08|09|10|11)/i.test(name)) {
+    for (const [name, definition] of this.effectDefinitions) if (/^(?:w(?:00|01|02|03|04|05|06|07|08|09|10|11)|pos367$)/i.test(name)) {
       for (const reference of definition.soundReferences || []) {
         const file = this.waveFiles.get(reference.replace(/\.wav$/i, '').toLowerCase());
         if (file) files.set(file.id, file);
@@ -1911,15 +1889,29 @@ export class MeteorGame {
     }
     for (const file of files.values()) this._loadSoundBuffer(file).catch(() => {});
   }
-  async _soundDefinition(id) {
+  async _soundDefinition(id, { all = false, age = 0 } = {}) {
     if (!id || this.muted || this.paused || !this.audio) return;
     const definition = this.effectDefinitions?.get(String(id).toLowerCase());
-    const reference = definition?.soundReferences?.find(r => /fir/i.test(r)) || definition?.soundReferences?.[0];
-    const file = reference && this.waveFiles?.get(reference.replace(/\.wav$/i, '').toLowerCase()); if (!file) return;
-    try {
-      const buffer = await this._loadSoundBuffer(file); if (this.muted || this.paused || this.disposed) return;
-      const source = this.audio.createBufferSource(); source.buffer = buffer; source.connect(this.master); source.start(); source.onended = () => source.disconnect();
-    } catch (error) { console.warn('Original sound could not be played:', file.id, error); }
+    const graph = this.rageVfx?.manifest?.effects?.[String(id).toLowerCase()];
+    const references = all
+      ? graph?.nodes.filter(node => node.type === 'AUDIO').map(node => ({ name: node.sound, time: node.keys[0][0] }))
+        || definition?.soundReferences?.map(name => ({ name, time: 0 })) || []
+      : [{ name: definition?.soundReferences?.find(r => /fir/i.test(r)) || definition?.soundReferences?.[0], time: 0 }];
+    const startedAt = (this.audio.currentTime || 0) - age;
+    await Promise.all(references.map(async cue => {
+      const file = cue.name && this.waveFiles?.get(cue.name.replace(/\.wav$/i, '').toLowerCase());
+      if (!file) return;
+      try {
+        const buffer = await this._loadSoundBuffer(file);
+        if (this.muted || this.paused || this.disposed) return;
+        const now = this.audio.currentTime || 0, offset = Math.max(0, now - startedAt - cue.time);
+        if (offset >= buffer.duration) return;
+        const source = this.audio.createBufferSource();
+        source.buffer = buffer; source.connect(this.master);
+        source.onended = () => source.disconnect();
+        source.start(Math.max(now, startedAt + cue.time), offset);
+      } catch (error) { console.warn('Original sound could not be played:', file.id, error); }
+    }));
   }
   dispose() {
     this.frameOverlay?.dispose();

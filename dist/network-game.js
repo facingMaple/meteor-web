@@ -195,7 +195,7 @@ export class NetworkGame{
       const displayed=this.presentation.samples.get(f),fxBlend=state.blend&&displayed?.blend?{...displayed.blend,weight:displayed.weight,duration:state.blend.duration}:state.blend;
       g.rageVfx?.sample(f,{pose,context:state.context,serial:state.serial,frame:at,source:state.source,effectTime:state.effectTime,blend:fxBlend,deathEffectAge:Math.max(0,frame.time-(state.context?.deathEffectAt??frame.time)),consumed:span,frameIntervals:[{from,to:at,timeFrom:0,timeTo:span}]});
       if(displayed?.blend)this.presentation.blend(f,displayed);
-      if(serial&&state.context)g._soundDefinition?.(pose.raw?.fields.effectid);
+      if(serial&&state.context&&state.pose!==367)g._soundDefinition?.(pose.raw?.fields.effectid);
       if(f===g.hero){g.kills=state.kills;g.deaths=state.deaths;}
     }
     this.projectilePresentation?.receive(frame.projectiles,duration,frame.projectileFlights,frame.time);

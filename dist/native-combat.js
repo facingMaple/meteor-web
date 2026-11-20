@@ -324,6 +324,7 @@ export class NativeCombatController {
     this.timeline = null; this.queued = null; this.serial = 0; this.combo = 0;
     this._queuedRequest = null; this._activeMove = null; this._attackChain = false; this._motionChain = false; this._inputPose = null;
     this._reaction = null;
+    this.actionLockRemaining = 0;
     this._effectElapsed = 0;
     this.weaponMode = 'blade';
     this.frameTable = compileNativeFrameTable(data.poses); this._transition = null;
@@ -334,6 +335,7 @@ export class NativeCombatController {
     this.weaponMode = 'blade';
     this._queuedRequest = null; this._activeMove = null; this._attackChain = false; this._motionChain = false; this._inputPose = null;
     this._reaction = null;
+    this.actionLockRemaining = 0;
     this._transition = null;
   }
   _hasAttack(id, visited = new Set()) {
@@ -383,6 +385,7 @@ export class NativeCombatController {
     this.serial++; this.queued = deferred?.id??null; this._queuedRequest = deferred;
     if (!linked) {
       this._reaction = null;
+      this.actionLockRemaining = request.actionLock ?? 0;
       this._activeMove = request.context ?? null;
       this._attackChain = request.attack || this._hasAttack(request.id);
       this._inputPose = this._attackChain ? request.id : null; this._motionChain = request.motion === true;
@@ -401,10 +404,10 @@ export class NativeCombatController {
     if (from && duration > 0) this._transition = { from, to: { source: this.timeline.pose.source, frame: this.timeline.frame, poseId: request.id }, duration, elapsed: 0 };
     return true;
   }
-  play(id, { loop = false, force = false, context = null, canStart = null, onAccept = null, onStart = null, attack = false, motion = false } = {}) {
+  play(id, { loop = false, force = false, context = null, canStart = null, onAccept = null, onStart = null, attack = false, motion = false, actionLock = 0 } = {}) {
     const pose = this.data.poses.get(id); if (!pose?.valid) return false;
-    if (!force && this.reacting) return false;
-    const request = { id, loop, context, canStart, onAccept, onStart, attack, motion };
+    if (!force && (this.reacting || this.actionLocked)) return false;
+    const request = { id, loop, context, canStart, onAccept, onStart, attack, motion, actionLock };
     // 004cbf10 enters controller state6;004cff40 explicitly accepts attacks
     // from state6. This is a locomotion interrupt, not an invented ACT link.
     if(!force&&attack&&this._motionChain&&this._activeMove?.kind==='dash')return this._start(request);
@@ -476,6 +479,7 @@ export class NativeCombatController {
   update(dt, { grounded, projectileReady = true, getFacing = null } = {}) {
     if (!this.timeline) return null;
     let remaining = Math.max(0, dt), state = null; const segments = [];
+    this.actionLockRemaining = Math.max(0, this.actionLockRemaining - remaining);
     for (let transitions = 0; transitions < 128; transitions++) {
       const timeline = this.timeline, pose = timeline.pose;
       if (this._transition) {
@@ -557,7 +561,8 @@ export class NativeCombatController {
   get stance() { const profile = NATIVE_WEAPONS[this.weapon]; return profile.modes?.[this.weaponMode]?.stance ?? profile.stance; }
   get reacting() { return !!this._reaction && !!this.timeline && !this.timeline.finished; }
   get reactionPhase() { return this.reacting ? this._reaction.phase : null; }
-  get busy() { return !!this.timeline && !this.timeline.finished && (this._attackChain || this._motionChain || !!this._reaction); }
+  get actionLocked() { return this.actionLockRemaining > 1e-7; }
+  get busy() { return this.actionLocked || !!this.timeline && !this.timeline.finished && (this._attackChain || this._motionChain || !!this._reaction); }
   get currentMove() { return this._activeMove; }
   get queuedMove() { return this._queuedRequest?.context ?? null; }
   get poseBlend() { const blend = this._transition; return blend ? { from: blend.from, to: blend.to, weight: Math.min(1, blend.elapsed / blend.duration), duration: blend.duration } : null; }

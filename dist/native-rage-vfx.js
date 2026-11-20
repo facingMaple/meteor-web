@@ -1,6 +1,7 @@
 import * as THREE from './vendor/three.module.js';
 import { loadNativeEffectManifest, createEffectTransforms, setEffectTime, effectNodeMatrix, snapshotEffectAnchors } from './native-effect-transforms.js';
 import { NativeWeaponTrails } from './native-weapon-trails.js';
+import { WeaponSkillAccents } from './weapon-skill-accents.js';
 export { sampleEffectKeys } from './native-effect-transforms.js';
 
 // Original PonEF keys/textures drive presentation only. No visual shape becomes
@@ -90,7 +91,7 @@ export class NativeRageVfx {
   constructor({ scene, manifest, textures = new Map() }) {
     this.scene = scene; this.manifest = manifest; this.textures = textures;
     this.active = []; this.actors = new Map(); this.deathCasts=new WeakMap();this.disposed = false;
-    this.time = 0; this.trails = new NativeWeaponTrails(scene, manifest);
+    this.time = 0; this.trails = new NativeWeaponTrails(scene, manifest); this.accents = new WeaponSkillAccents(scene);
     this.group = new THREE.Group(); this.group.name = '原版怒气技能特效'; scene.add(this.group);
   }
   sample(actor, state, fps = 30) {
@@ -105,16 +106,16 @@ export class NativeRageVfx {
         if(effect){effect.time=Math.max(0,context.deathEffectTime+(state.deathEffectAge||0));effect.persistAfterDeath=true;effect.anchorSnapshot=snapshotEffectAnchors(effect);this._retire(effect);}
       }
       for(const effect of [...this.active])if(effect.actor===actor&&!effect.persistAfterDeath)this._remove(effect);
-      this.trails.clearActor(actor);return null;
+      this.trails.clearActor(actor);this.accents.clearActor(actor);return null;
     }
     if (actor.combat?.reacting || actor.networkReactionPhase) {
       const live = this.actors.get(actor); if (live) this._remove(live);
-      this.trails.clearActor(actor); return null;
+      this.trails.clearActor(actor); this.accents.clearActor(actor); return null;
     }
     const segments = state.segments?.length ? state.segments : [state], character = actor.character;
     const hasEffect = this.actors.has(actor) || segments.some(s => this.manifest.effects[String(s.pose?.raw?.fields.effectid || '').toLowerCase()]);
     const hasDrag = segments.some(s => !s.blend && s.pose?.drags?.some(d => s.frameIntervals?.some(r => r.to >= d.start && r.from < d.end + 1)));
-    if (!hasEffect && !hasDrag) return null;
+    if (!hasEffect && !hasDrag && !segments.some(segment => this.accents.hasCue(segment))) return null;
     const saved = { source: character.source, frame: character.frame, facing: actor.root.rotation.y }; let offset = 0, result = null;
     try {
       for (const segment of segments) {
@@ -124,6 +125,7 @@ export class NativeRageVfx {
         if (segment.blend && character.setPoseBlend) character.setPoseBlend(segment.blend.from, segment.blend.to, segment.blend.weight);
         else character.setPoseFrame?.(segment.source ?? segment.pose?.source, segment.frame);
         result = this._sampleSegment(actor, segment, fps, this.time + offset + (segment.consumed || 0));
+        this.accents.sample(actor, segment, offset);
         this.trails.sample(actor, segment, offset);
         offset += Math.max(0, segment.consumed || 0);
       }
@@ -218,7 +220,7 @@ export class NativeRageVfx {
   update(dt, camera = null) {
     if (this.disposed) return;
     const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
-    this.time += step; this.trails.update(step);
+    this.time += step; this.trails.update(step); this.accents.update(step);
     for (const effect of [...this.active]) {
       if (effect.actor.dead&&!effect.persistAfterDeath || effect.actor.disposed || effect.actor.scriptRemoved || effect.live && effect.actor.combat?.reacting) { this._remove(effect); continue; }
       if (!effect.live) {
@@ -266,10 +268,10 @@ export class NativeRageVfx {
     effect.group.removeFromParent();
     for (const node of effect.nodes) if (node.mesh) { node.mesh.geometry.dispose(); node.mesh.material.dispose(); }
   }
-  clearActor(actor) { for (const effect of [...this.active]) if (effect.actor === actor) this._remove(effect); this.trails.clearActor(actor);this.deathCasts.delete(actor); }
-  clear() { for (const effect of [...this.active]) this._remove(effect); this.trails.clear();this.deathCasts=new WeakMap(); }
+  clearActor(actor) { for (const effect of [...this.active]) if (effect.actor === actor) this._remove(effect); this.trails.clearActor(actor);this.accents.clearActor(actor);this.deathCasts.delete(actor); }
+  clear() { for (const effect of [...this.active]) this._remove(effect); this.trails.clear();this.accents.clear();this.deathCasts=new WeakMap(); }
   dispose() {
-    if (this.disposed) return; this.clear(); this.group.removeFromParent(); this.trails.dispose();
+    if (this.disposed) return; this.clear(); this.group.removeFromParent(); this.trails.dispose(); this.accents.dispose();
     for (const texture of new Set(this.textures.values())) texture.dispose(); this.textures.clear(); this.disposed = true;
   }
 }

@@ -130,6 +130,79 @@ test('enhanced weapon skins keep their original POS blade trail instead of hidin
   }finally{f.vfx.dispose();}
 });
 
+test('skill accents follow separate source frames once per cast and respect interruption', () => {
+  const { actor, scene, vfx } = fixture('sword');
+  try {
+    actor.weapon = 'sword'; actor.root.position.set(3, 1, 5);
+    const pose = data.poses.get(560), cast = { ...state(560, .8), source: pose.source, consumed: .05 };
+    const interval = (from, to) => [{ from: pose.start + from, to: pose.start + to, timeFrom: 0, timeTo: .05 }];
+    vfx.sample(actor, { ...cast, frameIntervals: interval(9, 10) });
+    assert.equal(vfx.accents.active.length, 0);
+    for (let repeat = 0; repeat < 2; repeat++) vfx.sample(actor, { ...cast, frameIntervals: interval(10, 24) });
+    vfx.update(.06);
+    const [first, second] = vfx.accents.active;
+    assert.deepEqual(vfx.accents.active.map(cue => cue.kind), ['cutLeft', 'cutRight']);
+    assert.ok(first.start < second.start && first.mesh.visible && second.mesh.visible);
+    const firstBlade = first.mesh.geometry.attributes.position, secondBlade = second.mesh.geometry.attributes.position;
+    assert.ok(firstBlade.getY(44) > firstBlade.getY(0) && secondBlade.getY(44) < secondBlade.getY(0));
+    assert.deepEqual(first.mesh.position.toArray(), [3, 1, 5]);
+    assert.equal(vfx.active[0].id, 'pos560');
+    const originalWave = vfx.active[0].nodes.find(node => node.source.name === 'AttackWave02');
+    assert.ok(originalWave.mesh.visible && originalWave.mesh.material.opacity > 0);
+    assert.equal(originalWave.mesh.material.opacity, originalWave.key[24] * RAGE_VFX_ADAPTER.brightness);
+    assert.equal(originalWave.mesh.material.blendSrc, THREE.SrcAlphaFactor);
+    assert.equal(originalWave.mesh.material.blendDst, THREE.OneFactor);
+    assert.equal(first.mesh.material.blending, THREE.AdditiveBlending);
+    actor.networkReactionPhase = 'hit';
+    vfx.sample(actor, cast);
+    assert.equal(vfx.accents.active.length, 0);
+    assert.equal(first.mesh.parent, null);
+    assert.ok(!scene.children.includes(second.mesh));
+  } finally { vfx.dispose(); }
+});
+
+test('spear follow-up lands its own accent and expires independently of the original effect', () => {
+  const { actor, vfx } = fixture('spear');
+  try {
+    actor.weapon = 'spear';
+    const opening = data.poses.get(562), follow = data.poses.get(563);
+    const segment = (pose, serial, from, to) => ({ ...state(pose.id, .7, { poseId: 562 }, serial), consumed: .05,
+      frameIntervals: [{ from: pose.start + from, to: pose.start + to, timeFrom: 0, timeTo: .05 }] });
+    const rise = segment(opening, 1, 12, 16), landing = segment(follow, 2, 16, 20);
+    vfx.sample(actor, { ...landing, segments: [rise, landing] });
+    vfx.update(.1);
+    assert.deepEqual(vfx.accents.active.map(cue => cue.kind), ['rise', 'shock']);
+    assert.equal(vfx.actors.get(actor).id, 'pos563');
+    vfx.update(.5);
+    assert.equal(vfx.accents.active.length, 0);
+    assert.equal(vfx.actors.get(actor).id, 'pos563');
+  } finally { vfx.dispose(); }
+});
+
+test('hammer fury separates the three native attack windows into low cracks and rising sparks', () => {
+  const { actor, vfx } = fixture('hammer');
+  try {
+    actor.weapon = 'hammer';
+    const pose = data.poses.get(566);
+    const sample = state(566, .98);
+    vfx.sample(actor, { ...sample, consumed: .10, frameIntervals: [
+      { from: pose.attacks[0].start - 1, to: pose.attacks[2].start, timeFrom: 0, timeTo: .10 }
+    ] });
+    vfx.update(.12);
+    const [opening, middle, last] = vfx.accents.active;
+    assert.deepEqual(vfx.accents.active.map(cue => cue.kind), ['fissure', 'sparks', 'fissure']);
+    assert.ok(opening.start < middle.start && middle.start < last.start);
+    assert.equal(opening.mesh.geometry, last.mesh.geometry);
+    opening.mesh.geometry.computeBoundingBox();
+    middle.mesh.geometry.computeBoundingBox();
+    assert.ok(opening.mesh.geometry.boundingBox.max.y < .30);
+    assert.ok(middle.mesh.geometry.boundingBox.max.y > 1);
+    const originalBall = vfx.actors.get(actor).nodes.find(node => node.source.name === 'AttackBall03');
+    assert.ok(originalBall.mesh.visible);
+    assert.equal(originalBall.mesh.material.opacity, THREE.MathUtils.clamp(originalBall.key[24], 0, 1) * RAGE_VFX_ADAPTER.brightness);
+  } finally { vfx.dispose(); }
+});
+
 test('pickup uses preserved GetItem shapes and textures without replacing a live skill effect',async()=>{
   const extra=JSON.parse(await readFile(new URL('../dist/assets/original/item-vfx.json',import.meta.url),'utf8'));
   const bytes=await readFile(new URL('../dist/assets/original/sounds/definitions/getitem.ef',import.meta.url));

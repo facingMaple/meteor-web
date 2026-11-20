@@ -3,7 +3,14 @@ import * as THREE from './vendor/three.module.js';
 // Presentation adapter, not recovered EXE emitter constants. Original damage,
 // TargetMove and the selected reaction's d_base lift choose distinct feedback.
 export const BLOOD_KINDS=Object.freeze(['slash','thrust','impact','launch','shot']);
-export const BLOOD_FEEDBACK_ADAPTER=Object.freeze({capacity:768,count:40,lifetime:.68,gravity:8});
+const BLOOD_LEVELS = [
+  { count: 28, cores: 3, size: 1.23, speed: .9, life: .46, hold: .03 },
+  { count: 46, cores: 5, size: 1.72, speed: 1.18, life: .57, hold: .05 },
+  { count: 70, cores: 7, size: 2.2, speed: 1.55, life: .71, hold: .07 }
+];
+const CORE_OPACITY = .31;
+const DROPLET_OPACITY = .66;
+export const BLOOD_FEEDBACK_ADAPTER=Object.freeze({capacity:768,count:BLOOD_LEVELS[0].count,lifetime:BLOOD_LEVELS[0].life,gravity:8});
 export function bloodStyleForHit({damage=0,force=0,weapon='',knockdown=false,lift=0,reactionPose=null}={}){
   const power=Number.isFinite(damage)?Math.max(0,damage):0,push=Number.isFinite(force)?Math.max(0,force):0;
   const level=knockdown||power>=90?2:power>=45||push>=8||reactionPose===100?1:0;
@@ -13,7 +20,7 @@ export function bloodStyleForHit({damage=0,force=0,weapon='',knockdown=false,lif
 export function validBloodStyle(style){return !!style&&BLOOD_KINDS.includes(style.kind)&&Number.isInteger(style.level)&&style.level>=0&&style.level<=2;}
 export function bloodProfile(style){
   const {kind,level}=validBloodStyle(style)?style:{kind:'slash',level:0};
-  return {kind,level,count:[40,76,128][level],cores:[4,8,14][level],size:[1.5,2.3,3.4][level],speed:[1.1,1.55,2.15][level],life:[.68,.86,1.02][level],hold:[.07,.11,.16][level]};
+  return { kind, level, ...BLOOD_LEVELS[level] };
 }
 export class NativeBloodFeedback{
   constructor(scene){
@@ -33,7 +40,7 @@ export class NativeBloodFeedback{
           if(form<.5){float edge=.66+.14*sin(angle*5.+noiseSeed)+.10*sin(angle*9.-noiseSeed);d/=edge;}
           else if(form<1.5){float width=.23+.67*(vBloodUv.y+1.)*.5;d=length(vec2(vBloodUv.x/width,vBloodUv.y));}
           if(d>1.)discard;float a=(1.-smoothstep(.50,1.,d))*fade;
-          gl_FragColor=vec4(mix(vec3(.16,.002,.006),vec3(.55,.012,.018),1.-d*.6),a);
+          gl_FragColor=vec4(mix(vec3(.13,.004,.009),vec3(.43,.014,.022),1.-d*.6),a);
           #include <colorspace_fragment>
         }`});
     this.mesh=new THREE.Mesh(geometry,material);this.mesh.name='分级血花与血流 · 网页表现';this.mesh.frustumCulled=false;this.mesh.visible=false;scene.add(this.mesh);
@@ -54,7 +61,8 @@ export class NativeBloodFeedback{
       const core=i<profile.cores,streak=!core&&i%3!==0,life=profile.life+(i%4)*.03;
       const origin=point.clone();if(core){origin.addScaledVector(right,Math.sin(a)*.1*profile.size);origin.y+=Math.sin(a*1.7)*.08*profile.size;velocity.multiplyScalar(.35);}
       const delay=core?0:(i%7)*.012,width=(core?.20:streak?.034:.062)*profile.size*(.8+phase*.6),height=(core?.24:streak?.17:.085)*profile.size*(.8+phase*.6);
-      this.particles[slot]={origin,velocity,age:0,life,delay,hold:profile.hold,width,height,style:profile.kind,level:profile.level};this.positions.set(origin.toArray(),slot*3);this.alpha[slot]=delay?0:core?.4:.9;
+      this.particles[slot]={origin,velocity,age:0,life,delay,hold:profile.hold,width,height,style:profile.kind,level:profile.level};this.positions.set(origin.toArray(),slot*3);
+      this.alpha[slot] = delay ? 0 : (core ? CORE_OPACITY : DROPLET_OPACITY);
       this.sizes[slot*2]=width*(core?.65:1);
       this.sizes[slot*2+1]=height*(core?.65:1);
       this.velocities.set(velocity.toArray(),slot*3);this.shapes[slot]=core?0:streak?1:2;this.seeds[slot]=a;
@@ -74,7 +82,7 @@ export class NativeBloodFeedback{
       this.positions[i*3]=p.origin.x+p.velocity.x*age;this.positions[i*3+1]=p.origin.y+p.velocity.y*age-.5*BLOOD_FEEDBACK_ADAPTER.gravity*age*age;
       this.positions[i*3+2]=p.origin.z+p.velocity.z*age;
       const fade=Math.max(0,age-p.hold)/Math.max(.01,p.life-p.hold);
-      this.alpha[i]=(core?.4:.9)*Math.pow(1-fade,.9);
+      this.alpha[i] = (core ? CORE_OPACITY : DROPLET_OPACITY) * Math.pow(1 - fade, .9);
     }
     this.mesh.visible=active>0;this._dirty();
   }

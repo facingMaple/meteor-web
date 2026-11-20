@@ -10,6 +10,7 @@ import {createPlayerControl,clearPlayerCommands,applyPlayerLook,PLAYER_LOOK_YAW_
 import {nativeSameTeam} from './native-teams.js';
 import {networkProjectileSnapshot,NetworkProjectileMotion,NetworkShortFlights} from './network-projectiles.js';
 import {NetworkFrameBuffer} from './network-frame-buffer.js';
+import {RAGE_BURST} from './rage-burst.js';
 export function networkPoseBlend(blend){
   if(!blend)return null;
   // Interrupted-hit snapshots stay local: transmit two frame descriptors,
@@ -199,9 +200,18 @@ export class NetworkGame{
     }
     this.projectilePresentation?.receive(frame.projectiles,duration,frame.projectileFlights,frame.time);
     const self=frame.players.find(state=>state.id===this.client.playerId);if(self&&Object.hasOwn(self,'lockTargetId')){const control=g.localControl||g;control.locked=self.lockTargetId?this.actors.get(self.lockTargetId)||null:null;control.autoLockEnabled=self.autoLockEnabled!==false;}
-    for(const event of frame.impacts||[]){if(event.id<=this.lastImpactId)continue;this.lastImpactId=event.id;if(frame.time-event.time>.4)continue;
-      const local=event.attackerId===this.client.playerId||event.targetId===this.client.playerId;
-      if(event.projectile)this.projectilePresentation.scheduleFeedback(event,local);else g._playCombatFeedback?.(event,local);}
+    for (const event of frame.impacts || []) {
+      if (event.id <= this.lastImpactId) continue;
+      this.lastImpactId = event.id;
+      const age = Math.max(0, frame.time - event.time);
+      const local = event.attackerId === this.client.playerId || event.targetId === this.client.playerId;
+      if (event.kind === 'rage-burst') {
+        if (age < RAGE_BURST.effectTime) g._playCombatFeedback?.(event, local, null, age);
+      } else if (age <= .4) {
+        if (event.projectile) this.projectilePresentation.scheduleFeedback(event, local);
+        else g._playCombatFeedback?.(event, local);
+      }
+    }
     if(frame.result){for(const actor of this.actors.values())this.presentation.update(actor,.15);this.projectilePresentation?.update(.15);this.finish(frame.result);}this.updateBoard();if(g.locked?.dead)g.locked=null;g._hud();
   }
   dispose(){this.active=false;this.frameBuffer?.clear();this.projectilePresentation?.dispose();this.shortFlights?.dispose();if(this.matchSpawns&&this.game.currentMap?.spawns===this.matchSpawns)this.game.currentMap.spawns=this.previousSpawns;this.board?.remove();this.game.lootReplica=this.previousLootReplica;this.game.networkCombat=this.previousNetworkCombat;for(const actor of this.actors.values()){this.game.stealthFeedback?.clearActor(actor);delete actor.networkItemStatuses;delete actor.networkQueuedMoveName;delete actor.networkReactionPhase;if(actor.nameplate)actor.nameplate.visible=true;}this.game._clearDroppedWeapons?.();for(const [actor,previous] of this.previousControls){const control=this.controls.get(actor.networkId);control?.keys.clear();clearPlayerCommands(control);if(actor.playerControl===control){if(previous)actor.playerControl=previous;else delete actor.playerControl;}}for(const [key,value] of Object.entries(this.original))this.game[key]=value;this.original.pause.call(this.game,true);}

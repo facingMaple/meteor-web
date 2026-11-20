@@ -115,9 +115,9 @@
     <div class="hud-top"><div class="player-stats"><div class="player-heading"><span class="player-seal">胡</span><div><strong><span id="player-name">YS-胡桃</span> <small>你</small></strong><span id="hud-weapon">长剑 · 剑气纵横</span></div></div><div class="stat-line"><span>气血</span><div class="bar health"><i id="hp-bar"></i></div><b id="hp-label">1000 / 1000</b></div><div class="stat-line"><span>怒气</span><div class="bar rage"><i id="rage-bar"></i></div><b id="rage-mode-label" hidden>无限</b></div></div><div class="match-status"><span id="hud-map"></span><strong id="timer">00:00</strong><div><span><span id="battle-counter-label">命中</span> <b id="kills">0</b></span><span>倒下 <b id="deaths">0</b></span></div></div><div class="hud-actions"><button class="icon-button sound-toggle" aria-label="开启音效"><svg><use href="#i-muted"/></svg></button><button class="icon-button" id="pause-button" aria-label="暂停游戏"><svg><use href="#i-pause"/></svg></button><button class="icon-button" id="fullscreen" aria-label="全屏游戏"><svg><use href="#i-full"/></svg></button><canvas id="minimap" width="150" height="150" aria-label="战场小地图"></canvas></div></div>
     <div id="musket-reticle" class="hidden" aria-label="火铳瞄准准星"><span></span><small>移动鼠标瞄准 · 攻击射击 · 防御或跳跃收枪</small></div>
     <div id="enemy-status" class="hidden"><span id="enemy-name"></span><small id="enemy-hp"></small><div class="bar enemy"><i id="enemy-bar"></i></div></div>
-    <button id="pickup-hint" class="hidden" data-action="pickup" aria-label="拾取附近道具">拾取道具（F）</button><div id="mission-goal" class="hidden" aria-live="polite"></div><div id="player-status" class="hidden" aria-live="polite"></div><div id="game-announcement" aria-live="polite"></div><div id="hit-feedback"></div><div id="combo-feedback"></div>
+    <button id="pickup-hint" class="hidden" data-action="pickup" aria-label="拾取附近道具">拾取道具</button><div id="mission-goal" class="hidden" aria-live="polite"></div><div id="player-status" class="hidden" aria-live="polite"></div><div id="game-announcement" aria-live="polite"></div><div id="hit-feedback"></div><div id="combo-feedback"></div>
     <div class="hud-bottom"><span class="hud-shortcut">Esc 暂停 / 操作说明</span><span class="battle-hint"><i class="status-dot"></i> <span id="battle-hint-text">原版招式演武 · 鼠标左键出招</span></span><div class="key-guide" hidden><span><kbd>W A S D</kbd> 移动</span><span><kbd>鼠标左键</kbd> 出招</span><span><kbd>Space</kbd> 防御</span><span><kbd>鼠标右键</kbd> 跃起</span><span><kbd>Q</kbd> 锁定</span><span><kbd>E</kbd> 换兵器</span><span>靠近自动拾取</span><span><kbd>Esc</kbd> 暂停</span></div></div>
-    <div class="touch-controls"><div class="touch-dpad"><button data-action="forward" aria-label="前进">↑</button><button data-action="left" aria-label="左移">←</button><button data-action="back" aria-label="后退">↓</button><button data-action="right" aria-label="右移">→</button></div><div class="touch-attacks"><button data-action="jump">跃</button><button data-action="crouch">蹲</button><button data-action="guard">守</button><button data-action="attack" class="touch-main">攻</button><button data-action="switch">换</button><button data-action="drop" aria-label="丢弃副兵器">丢</button><button data-action="lock">锁</button></div></div>
+    <div class="touch-controls"><div class="touch-dpad"><button data-action="forward" aria-label="前进">↑</button><button data-action="left" aria-label="左移">←</button><button data-action="back" aria-label="后退">↓</button><button data-action="right" aria-label="右移">→</button></div><div class="touch-attacks"><button data-action="jump">跃</button><button data-action="crouch">蹲</button><button data-action="guard">守</button><button data-action="attack" class="touch-main">攻</button><button data-action="switch">换</button><button data-action="drop" aria-label="丢弃副兵器">丢</button><button data-action="lock">锁</button><button data-action="burst" aria-label="爆气解围">爆</button></div></div>
   </div>
 
   <dialog id="modal"><button id="close-modal" class="icon-button modal-close" aria-label="关闭"><svg><use href="#i-close"/></svg></button><div id="modal-content"></div></dialog>
@@ -134,23 +134,30 @@
   <script>
     if((location.hostname==='linfengya.cn'||location.hostname==='www.linfengya.cn')&&location.pathname.startsWith('/lx'))fetch('/api/track',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({path:location.pathname}),keepalive:true}).catch(()=>{});
   </script>
+  <script src="./analytics.js?v=20261120-analytics"></script>
   <script type="importmap">
     {"imports":{
-      "./engine.js":"./engine.js?v=20261116-wardrobe",
+      "./engine.js":"./engine.js?v=20261120-red-burst",
       "./network-lobby.js":"./network-lobby.js?v=20261113-load",
-      "./network-game.js":"./network-game.js?v=20261116-wardrobe",
+      "./network-game.js":"./network-game.js?v=20261120-red-burst",
       "./character-appearances.js":"./character-appearances.js?v=20261116-outfits",
       "./character-catalog.js":"./character-catalog.js?v=20261116-training",
-      "./native-character.js":"./native-character.js?v=20261113-load",
-      "./native-combat.js":"./native-combat.js?v=20261113-load",
+      "./native-character.js":"./native-character.js?v=20261120-burst-presentation",
+      "./native-combat.js":"./native-combat.js?v=20261120-red-burst",
+      "./native-blood-feedback.js":"./native-blood-feedback.js?v=20261119-subtle",
+      "./native-rage-vfx.js":"./native-rage-vfx.js?v=20261120-skill-fx",
+      "./native-weapon-trails.js":"./native-weapon-trails.js?v=20261120-skill-fx",
+      "./weapon-skill-accents.js":"./weapon-skill-accents.js?v=20261120-skill-fx",
       "./qiyun-courtyard.js":"./qiyun-courtyard.js?v=20261113-load",
-      "./engine.js":"./engine.js?v=20261119-weapon-collection",
+      "./rage-burst.js":"./rage-burst.js?v=20261120-red-burst",
+      "./rage-burst-presentation.js":"./rage-burst-presentation.js?v=20261120-red-burst",
+      "./keybindings.js":"./keybindings.js?v=20261120-burst",
       "./native-weapon-appearances.js":"./native-weapon-appearances.js?v=20261119-weapon-collection",
       "./weapon-collection-catalog.js":"./weapon-collection-catalog.js?v=20261119-weapon-names",
       "./model-viewer.js":"./model-viewer.js?v=20261119-weapon-collection",
       "./network-projectiles.js":"./network-projectiles.js?v=20261119-weapon-collection"
     }}
   </script>
-  <script type="module" src="./app.js?v=20261119-loadout-preview"></script>
+  <script type="module" src="./app.js?v=20261120-red-burst"></script>
 </body>
 </html>

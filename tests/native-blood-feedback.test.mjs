@@ -42,11 +42,12 @@ test('actual force, knockdown and source reaction lift select blood levels and d
  assert.ok(profiles[0].count<profiles[1].count&&profiles[1].count<profiles[2].count);assert.ok(profiles[2].size>profiles[0].size);assert.ok(profiles[2].life>profiles[0].life);
 });
 
-test('blood uses visible world-sized streaks and different directional fans without per-hit GPU objects',()=>{
+test('blood uses restrained world-sized streaks and different directional fans without per-hit GPU objects',()=>{
  const samples={};for(const kind of ['slash','thrust','impact','launch','shot']){
-  const blood=new NativeBloodFeedback(new T.Scene());assert.equal(blood.emit({point,direction,damage:20,style:{kind,level:2}}),128);
+  const blood=new NativeBloodFeedback(new T.Scene());assert.equal(blood.emit({point,direction,damage:20,style:{kind,level:2}}),70);
   blood.update(.15);samples[kind]=blood.particles.map(p=>p?.velocity.toArray()).filter(Boolean);
-  assert.equal(blood.mesh.geometry.instanceCount,PROFILE.capacity);assert.equal(blood.mesh.geometry.index.count,6);assert.ok(blood.sizes.some(size=>size>.3));
+  assert.equal(blood.mesh.geometry.instanceCount,PROFILE.capacity);assert.equal(blood.mesh.geometry.index.count,6);
+  assert.ok(blood.particles.some((p,i)=>p&&blood.shapes[i]===1&&blood.sizes[i*2+1]>.18));
   assert.equal(blood.mesh.material.depthWrite,false);blood.dispose();
  }
  assert.notDeepEqual(samples.slash,samples.thrust);assert.notDeepEqual(samples.launch,samples.impact);
@@ -62,13 +63,17 @@ test('guest blood style reproduces host density and trajectory independent of it
 });
 
 
-test('large moves increase the main blood cloud count and visible footprint, not only tiny droplets',()=>{
+test('heavy hits have a larger blood effect than light hits but stay within a short visual envelope',()=>{
  const light=new NativeBloodFeedback(new T.Scene()),heavy=new NativeBloodFeedback(new T.Scene());
  light.emit({point,direction,damage:24,style:{kind:'slash',level:0}});heavy.emit({point,direction,damage:89,style:{kind:'slash',level:2}});
  light.update(.12);heavy.update(.12);
  const cores=b=>b.particles.reduce((n,p,i)=>n+Number(!!p&&b.shapes[i]===0),0),area=b=>b.particles.reduce((n,p,i)=>n+(p?b.sizes[i*2]*b.sizes[i*2+1]*b.alpha[i]:0),0);
- assert.equal(cores(light),4);assert.equal(cores(heavy),14);assert.ok(area(heavy)>area(light)*10,'a heavy move must have an unmistakably larger visible blood footprint');
- heavy.update(.6);assert.ok(heavy.mesh.visible&&heavy.alpha.some(a=>a>.1));heavy.update(.7);assert.equal(heavy.mesh.visible,false);
+ assert.ok(cores(heavy)>cores(light));
+ assert.ok(area(heavy)>area(light)*2);
+ assert.ok(area(heavy)<3,'keep the total opacity-weighted size of the heavy burst below 3');
+ assert.ok(Math.max(...heavy.alpha)<.7);
+ heavy.update(.3);assert.ok(heavy.mesh.visible&&heavy.alpha.some(a=>a>.1));
+ heavy.update(.5);assert.equal(heavy.mesh.visible,false);
  light.dispose();heavy.dispose();
 });
 

@@ -4,13 +4,14 @@ import { NETWORK_MODES } from './network-rules.js';
 let networkLobby;
 import { loadBindings, keyLabel } from './keybindings.js';
 import { mountKeySettings } from './keybinding-settings.js';
+import { RAGE_BURST } from './rage-burst.js';
 let keyStorage; try { keyStorage=window.localStorage; } catch {}
 let keyBindings=loadBindings(keyStorage), disposeKeySettings=null;
 const keyHint=action=>keyBindings[action].map(keyLabel).join(' / ');
 function refreshKeyGuide(){
   const guide=document.querySelector('.key-guide');if(!guide)return;
   guide.replaceChildren();
-  const items=[[[...['forward','left','back','right'].map(action=>keyLabel(keyBindings[action][0]))].join(' '),'移动'],[keyHint('attack'),'出招'],[keyHint('guard'),'防御'],[keyHint('jump'),'跃起'],[keyHint('lock'),'锁定'],[keyHint('switch'),'换兵器'],[keyHint('drop'),'丢副兵器'],['Esc','暂停']];
+  const items=[[[...['forward','left','back','right'].map(action=>keyLabel(keyBindings[action][0]))].join(' '),'移动'],[keyHint('attack'),'出招'],[keyHint('guard'),'防御'],[keyHint('burst'),'爆气'],[keyHint('jump'),'跃起'],[keyHint('lock'),'锁定'],[keyHint('switch'),'换兵器'],[keyHint('drop'),'丢副兵器'],['Esc','暂停']];
   for(const [keys,label] of items){const span=document.createElement('span'),kbd=document.createElement('kbd');kbd.textContent=keys;span.append(kbd,' '+label);guide.append(span);}
 }
 refreshKeyGuide();
@@ -278,7 +279,7 @@ function updateSelection(){
   const appearanceSelect=$('#character-appearance');if(appearanceSelect){appearanceSelect.value=prefs.characterAppearance;appearanceSelect.disabled=prefs.character!==0||$('#appearance-toggle').disabled;}
 }
 const header=(en,title,desc='')=>`<div class="modal-kicker">${en}</div><h2 class="modal-title">${title}</h2>${desc?`<p class="modal-desc">${desc}</p>`:''}`;
-function guideHTML(){return header('THE WAY OF THE WARRIOR','武学招式','方向接攻击，步法接刀锋。选一柄兵器，查看出招指令。')+`<div class="combo-legend"><p><kbd>A</kbd> 是攻击记号：按 <kbd>${keyHint('attack')}</kbd>。</p><p><span>↑ ↓ ← →</span> 对应 <kbd>${['forward','back','left','right'].map(keyHint).join('；')}</kbd>。连续按顺序输入，重复方向先松开再按。<br>跳跃：<kbd>${keyHint('jump')}</kbd>，点按小跳、按住大跳。空中招式需离地后输入，连段需衔接前一招。火铳先按攻击举枪，举枪完成后再按攻击射击；移动鼠标瞄准，防御或跳跃收枪。</p></div><div class="combo-weapon-filter" role="group" aria-label="查看兵器招式">${Object.keys(weapons).map(weapon=>`<button type="button" data-guide-weapon="${weapon}" aria-pressed="${guideWeapon===weapon}" aria-controls="guide-move-panel"${guideWeapon===weapon?' class="selected"':''}>${weapons[weapon].name}</button>`).join('')}</div><div id="guide-move-panel" aria-labelledby="guide-weapon-heading">${renderNativeMoveGuide(guideWeapon)}</div><details class="guide-controls"><summary>移动、防御与其他操作</summary><div class="controls-grid">${[[['forward','left','back','right'].map(keyHint).join('；'),'移动'],['移动鼠标（进入游戏后锁定）','转动视角'],[keyHint('attack'),'攻击（招式中的 A）'],[keyHint('guard'),'防御'],[keyHint('crouch'),'蹲下'],[keyHint('jump'),'跳跃'],[keyHint('lock'),'解除 / 重新锁定；近战起手自动选取前方对手'],[keyHint('switch'),'切换兵器'],['走近物品','自动拾取'],[keyHint('drop'),'丢弃副兵器'],['Esc','暂停 / 返回对战']].map(([k,v])=>`<div class="control-row"><span>${v}</span><kbd>${k}</kbd></div>`).join('')}</div><p class="modal-note">按住 ${keyHint('crouch')}，快速按两次同一方向（两次之间松开），可向前、后、左、右翻滚。触屏按住「蹲」后也可双击方向。<br>触屏使用方向键和「攻」依次输入，「跃」点按小跳，按住大跳；起跳后可施展空中招式。上方兵器按钮只切换查看内容；实际换兵器请按 ${keyHint('switch')}。</p></details><div class="modal-actions"><button class="primary-button" data-do="${running?'resume':'play'}"><span>${running?'重返对决':'前往演武整装'}</span>${icon('arrow')}</button></div>`;}
+function guideHTML(){return header('THE WAY OF THE WARRIOR','武学招式','方向接攻击，步法接刀锋。选一柄兵器，查看出招指令。')+`<div class="combo-legend"><p><kbd>A</kbd> 是攻击记号：按 <kbd>${keyHint('attack')}</kbd>。</p><p><span>↑ ↓ ← →</span> 对应 <kbd>${['forward','back','left','right'].map(keyHint).join('；')}</kbd>。连续按顺序输入，重复方向先松开再按。<br>跳跃：<kbd>${keyHint('jump')}</kbd>，点按小跳、按住大跳。空中招式需离地后输入，连段需衔接前一招。火铳先按攻击举枪，举枪完成后再按攻击射击；移动鼠标瞄准，防御或跳跃收枪。<br>爆气：<kbd>${keyHint('burst')}</kbd>，消耗 ${RAGE_BURST.cost} 点怒气，震退近身敌人。命中未格挡的敌人会将其震倒。站立受击时也能释放。</p></div><div class="combo-weapon-filter" role="group" aria-label="查看兵器招式">${Object.keys(weapons).map(weapon=>`<button type="button" data-guide-weapon="${weapon}" aria-pressed="${guideWeapon===weapon}" aria-controls="guide-move-panel"${guideWeapon===weapon?' class="selected"':''}>${weapons[weapon].name}</button>`).join('')}</div><div id="guide-move-panel" aria-labelledby="guide-weapon-heading">${renderNativeMoveGuide(guideWeapon)}</div><details class="guide-controls"><summary>移动、防御与其他操作</summary><div class="controls-grid">${[[['forward','left','back','right'].map(keyHint).join('；'),'移动'],['移动鼠标（进入游戏后锁定）','转动视角'],[keyHint('attack'),'攻击（招式中的 A）'],[keyHint('guard'),'防御'],[keyHint('crouch'),'蹲下'],[keyHint('jump'),'跳跃'],[keyHint('lock'),'解除 / 重新锁定；近战起手自动选取前方对手'],[keyHint('switch'),'切换兵器'],['走近物品','自动拾取'],[keyHint('drop'),'丢弃副兵器'],['Esc','暂停 / 返回对战']].map(([k,v])=>`<div class="control-row"><span>${v}</span><kbd>${k}</kbd></div>`).join('')}</div><p class="modal-note">按住 ${keyHint('crouch')}，快速按两次同一方向（两次之间松开），可向前、后、左、右翻滚。触屏按住「蹲」后也可双击方向。<br>触屏使用方向键和「攻」依次输入，「跃」点按小跳，按住大跳，「爆」为爆气；起跳后可施展空中招式。上方兵器按钮只切换查看内容；实际换兵器请按 ${keyHint('switch')}。</p></details><div class="modal-actions"><button class="primary-button" data-do="${running?'resume':'play'}"><span>${running?'重返对决':'前往演武整装'}</span>${icon('arrow')}</button></div>`;}
 function weaponsHTML(){const w=weapons[prefs.weapon];const moves=nativeCombat?.moves?.[prefs.weapon]||[];return header('THE ARMORY','兵器谱','兵无常势，水无常形。选一柄趁手兵器，再入江湖。')+`<div class="weapon-options">${Object.entries(weapons).map(([key,v])=>`<button class="weapon-option ${key===prefs.weapon?'selected':''}" data-weapon="${key}" aria-pressed="${key===prefs.weapon}"><span class="weapon-glyph">${v.glyph}</span><strong>${v.name}</strong><small>${v.motto}<br>${'原版 · '+v.sourceName}</small></button>`).join('')}</div><p class="modal-desc" id="weapon-description">${w.desc}</p>${moves.length?`<div class="native-moves">${moves.map(move=>`<div><strong>${move.name||'第'+move.id+'式'}</strong><span>${move.frameCount} 帧 · ${move.duration.toFixed(2)} 秒</span></div>`).join('')}</div>`:''}<p class="modal-note">当前随身兵器：${w.name}。演武中按 ${keyHint('switch')} 切换主副兵器；单机任务按 ${keyHint('switch')} 切换原随身兵器。按 ${keyHint('attack')} 连击或投掷。</p><div class="modal-actions"><button class="primary-button" data-do="play"><span>返回战前整装</span>${icon('arrow')}</button></div>`;}
 
 function resourcesHTML(){return header('THE METEOR ARCHIVE','流星典藏','优先读取本地客户端的原始素材，流星资源网提供格式资料与缺失资源补充。')+`<div class="resource-list"><a class="resource-link" href="./assets/original/manifest.json" target="_blank" rel="noopener noreferrer"><span>本</span><div><strong>本地客户端原素材</strong><small>20 位人物 · 22 份地图 · 原始招式与配乐</small></div><span>↗</span></a><a class="resource-link" href="https://www.lxres.com/" target="_blank" rel="noopener noreferrer"><span>源</span><div><strong>流星资源网</strong><small>原版客户端 · 单机任务 · 人物兵器 · 地图资源</small></div><span>↗</span></a><a class="resource-link" href="https://www.lxres.com/LiuXingBiJi/1566.html" target="_blank" rel="noopener noreferrer"><span>图</span><div><strong>地图 GMC 结构笔记</strong><small>原生地图格式的 Web 解析依据</small></div><span>↗</span></a><a class="resource-link" href="./assets/SOURCES.md" target="_blank" rel="noopener noreferrer"><span>记</span><div><strong>本项目素材来源清单</strong><small>已使用的地图、贴图与转换记录</small></div><span>↗</span></a></div><p class="modal-note">这是《流星蝴蝶剑.net》的非官方 Web 实验重构。读取本地原版模型、骨骼、动画与招式表，在浏览器运行；剧情脚本与联网协议仍在逐项移植。原游戏与社区素材的权利归各自权利人所有。</p>`;}
@@ -485,6 +486,7 @@ function closeModal(){
 }
 async function startMatch(mode = 'training', missionId = currentMissionId, isCurrent = () => true, roomSelection, lowBandwidth = false) {
   if (loadingMatch || characterSelectionBusy) return;
+  window.gameAnalytics?.send('start_clicked', {mode});
   currentMode = mode === 'network' ? 'network' : mode === 'story' ? 'story' : 'training';
   currentLowBandwidth = currentMode === 'training' && lowBandwidth;
   const mission = currentMode === 'story' ? getNativeMission(missionId) : null;
@@ -525,6 +527,7 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
     await instance.start({ map, weapon, difficulty: prefs.difficulty, ...selection, mode: currentMode,
       lowBandwidth: currentLowBandwidth, enemyCount: prefs.enemyCount });
     if (!isCurrent()) return;
+    window.gameAnalytics?.send('match_entered', {mode:currentMode});
     updateMatchLoad('战场已就绪', 4);
     instance.menuIdle = false;
     instance.setMuted(prefs.muted);
@@ -536,6 +539,7 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
     if (canLock && document.pointerLockElement !== canvas) $('#battle-hint-text').textContent = '点击战场锁定鼠标 · 按 ' + keyHint('attack') + ' 出招';
   } catch (error) {
     if (!isCurrent()) return;
+    window.gameAnalytics?.send('load_failed', {mode:currentMode,kind:'match'});
     if (currentMode === 'network') throw error;
     console.error(error);
     returnLobby();
@@ -577,7 +581,9 @@ function updateHUD(s){if(!running)return;
   const comboFeedback=$('#combo-feedback'),comboText=s.moveName||(s.combo>1?`${s.combo} 连击`:'');lastCombo=s.combo;
   if(comboFeedback.textContent!==comboText)comboFeedback.textContent=comboText;
   comboFeedback.classList.toggle('named-move',!!s.moveName);if(!s.moveName)comboFeedback.dataset.command='';
-  $('#battle-hint-text').textContent=s.inputBlocked?'剧情进行中 · 对话后恢复操作':s.playerReaction==='hit'?'受击中 · 按住 '+keyHint('guard')+' 防御，恢复后接招':s.queuedMoveName?'已接招：'+s.queuedMoveName:s.hp<=0?(currentMode==='story'?'任务结束':'胜败乃兵家常事 · 正在重返战场'):s.infiniteRage?'无限怒气调试中 · 暂停后查看各兵器招式':s.rage>=100?'怒气已满 · 暂停后「查看招式」可查怒气技':s.locked?'镜头跟随锁定目标 · '+keyHint('lock')+' 解除 · 战斗镜头固定方向':(s.weapon==='dart'?'七星飞镖 · '+keyHint('attack')+' 投掷 · 暂停后可查看招式':(game?.mouseLook?.locked?'移动鼠标转视角 · ':'点击画面锁定鼠标 · ')+keyHint('attack')+' 出招');
+  const burstReady = s.grounded && s.moveName !== '爆气' && !['down', 'recover'].includes(s.playerReaction) &&
+    (s.rage >= RAGE_BURST.cost || s.infiniteRage);
+  $('#battle-hint-text').textContent=s.inputBlocked?'剧情进行中 · 对话后恢复操作':s.playerReaction==='hit'?(burstReady?'受击中 · 按 '+keyHint('burst')+' 爆气解围':'受击中 · 按住 '+keyHint('guard')+' 防御，恢复后接招'):s.queuedMoveName?'已接招：'+s.queuedMoveName:s.hp<=0?(currentMode==='story'?'任务结束':'胜败乃兵家常事 · 正在重返战场'):s.infiniteRage?'无限怒气调试中 · 暂停后查看各兵器招式':burstReady?'按 '+keyHint('burst')+' 爆气震倒近身敌人':s.locked?'镜头跟随锁定目标 · '+keyHint('lock')+' 解除 · 战斗镜头固定方向':(s.weapon==='dart'?'七星飞镖 · '+keyHint('attack')+' 投掷 · 暂停后可查看招式':(game?.mouseLook?.locked?'移动鼠标转视角 · ':'点击画面锁定鼠标 · ')+keyHint('attack')+' 出招');
   if(s.hp<lastHp){$('#game-hud').style.boxShadow='inset 0 0 90px #a2222266';setTimeout(()=>$('#game-hud').style.boxShadow='',180);}lastHp=s.hp;
   drawMinimap(s);
 }
@@ -591,6 +597,7 @@ function handleEvent(e){if(e.type==='pointer-unlock'){if(running&&!paused&&!load
   hitTimer=setTimeout(()=>feedback.style.opacity=0,420);
 }else if(e.text)announce(e.text,e.type==='kill'?1600:2000);}
 function handleEnd(r){
+  window.gameAnalytics?.send('match_finished', {mode:currentMode,result:r.win?'win':'loss'});
   clearDialogue();clearCombatFeedback();running=false;ended=true;paused=true;game?.pause(true);
   const mission=currentMode==='story'?getNativeMission(currentMissionId):null;
   if(mission&&r.win&&!prefs.completedMissions.includes(mission.id))prefs.completedMissions.push(mission.id);
@@ -639,7 +646,8 @@ $('#fullscreen').addEventListener('click',async()=>{try{if(document.fullscreenEl
 $('#pickup-hint').addEventListener('click',()=>{game?.action('pickup');$('#world').focus();});
 $$('[data-action]').filter(button=>button.id!=='pickup-hint').forEach(button=>{let pressed=false;button.addEventListener('pointerdown',e=>{e.preventDefault();if(!running||paused||loadingMatch)return;pressed=true;button.setPointerCapture(e.pointerId);game.action(button.dataset.action,true);});for(const type of ['pointerup','pointercancel','lostpointercapture'])button.addEventListener(type,e=>{e.preventDefault();if(!pressed)return;pressed=false;if(type!=='pointerup'&&button.dataset.action==='jump')game?.action('clear',false);game?.action(button.dataset.action,false);});});
 
-networkLobby=new NetworkLobby({getGame:()=>game,getSelection:()=>({...battleCharacterSelection(prefs),weaponAppearances:prefs.weaponAppearances}),onStart:(isCurrent,selection)=>startMatch('network',undefined,isCurrent,selection),onNotice:text=>toast(text),onResult:()=>openModal('network'),onStop:text=>{returnLobby();toast(text);}});
+networkLobby=new NetworkLobby({getGame:()=>game,getSelection:()=>({...battleCharacterSelection(prefs),weaponAppearances:prefs.weaponAppearances}),onStart:(isCurrent,selection)=>startMatch('network',undefined,isCurrent,selection),onNotice:text=>toast(text),onResult:()=>{window.gameAnalytics?.send('match_finished',{mode:'network',result:'ended'});openModal('network');},onStop:text=>{returnLobby();toast(text);}});
+window.gameAnalytics?.send('game_loaded', {duration_ms:window.gameAnalytics.elapsed(),webgl:window.gameAnalytics.webgl});
 updateSelection();
 if (Object.hasOwn(NATIVE_APPEARANCES, linkedAppearance)) save();
 syncScenery();

@@ -1,5 +1,5 @@
 import * as THREE from './vendor/three.module.js';
-import { createEffectTransforms, setEffectTime, effectNodeMatrix } from './native-effect-transforms.js';
+import { createEffectTransforms, setEffectTime, effectNodeMatrix, snapshotEffectAnchors } from './native-effect-transforms.js';
 
 // 00556910: POS "effect" =0x1001; 0055da50 ->0056f1d0 checks EF
 // nodes whose first name byte is A/a, excluding AUDIO/PATH. It queries
@@ -12,6 +12,19 @@ export const NATIVE_EFFECT_CONTACT_ADAPTER = Object.freeze({
 });
 const WORLD_AXES = [new THREE.Vector3(1, 0, 0), new THREE.Vector3(0, 1, 0), new THREE.Vector3(0, 0, 1)];
 const EFFECT_STEP=Symbol('native-effect-contact-step');
+const trainingFields = new Map([
+  [293, { nodes: ['AttackBall01'], visual: 'Sphere_7' }],
+  [325, { nodes: ['AttackBall'], visual: 'Sphere_14' }],
+  [368, { nodes: ['AttackBox'], visual: 'Cylinder_11' }],
+  [567, { nodes: ['Sphere_8', 'Sphere_9'], repelOnly: true }]
+]);
+const FIELD_REENTRY_SECONDS = .45;
+export const BLADE_THUNDER_POSE = 565;
+export const BLADE_THUNDER_STRIKES = Object.freeze(['AttackLight01', 'AttackLight02', 'AttackLight03']);
+
+export function protectsTrainingCast(actor) {
+  return actor.combat?.busy && !actor.combat.reacting && trainingFields.has(actor.combat.currentMove?.poseId);
+}
 
 export function nativeEffectBounds(source) {
   const d = source.dimensions;
@@ -85,7 +98,7 @@ export class NativeEffectContacts {
     graph.attackNodes=graph.nodes.filter(node=>/^[aA]/.test(node.source.name)&&nativeEffectBounds(node.source));
     this.actors.set(actor,graph);return graph;
   }
-  beginStep(actor,state){
+  beginStep(actor,state,{training=false}={}){
     if(this.disposed||!actor||!state)return;
     if(actor.dead||actor.disposed||actor.scriptRemoved){this.clearActor(actor);return;}
     let record=this.timelines.get(actor);
@@ -94,6 +107,8 @@ export class NativeEffectContacts {
       const start=record.clock,id=String(segment.pose?.raw?.fields.effectid||'').toLowerCase(),definition=this.manifest.effects[id];
       if(!segment.blend&&record.serial!==segment.serial){
         record.serial=segment.serial;
+        const profile = training && segment.pose && segment.context?.poseId === segment.pose.id && trainingFields.get(segment.pose.id);
+        if (profile && definition) this._startTrainingField(actor, record, segment, id, definition, profile);
         if(definition?.nodes.some(node=>/^[aA]/.test(node.name)&&nativeEffectBounds(node))){
           const graph=this._graph(actor,id,segment.serial),born=start-(segment.previousEffectTime||0);
           const end=born+Math.max(...graph.attackNodes.map(node=>node.source.keys.at(-1)[0]));
@@ -107,6 +122,65 @@ export class NativeEffectContacts {
       record.clock+=Math.max(0,segment.consumed||0);
       record.effects=record.effects.filter(effect=>effect.end>=record.clock-1e-7);
     }
+  }
+  _startTrainingField(actor, record, state, id, definition, profile) {
+    const attack = state.pose.attacks.find(attack => attack.bones.includes('effect'));
+    if (!attack) return;
+    const graph = createEffectTransforms(actor, definition, this.manifest);
+    const nodes = graph.nodes.filter(node => profile.nodes.includes(node.source.name) && nativeEffectBounds(node.source));
+    if (!nodes.length) return;
+    const visual = graph.nodes.find(node => node.source.name === profile.visual)?.source.keys;
+    const start = visual?.[0][0] ?? Math.min(...nodes.map(node => node.source.keys[0][0]));
+    const end = visual?.at(-1)[0] ?? Math.max(...nodes.map(node => node.source.keys.at(-1)[0]));
+    record.trainingField = {
+      graph, nodes, start, end, id, serial: state.serial, attack: { ...attack, index: state.pose.attacks.indexOf(attack) },
+      state: { pose: state.pose, poseId: state.pose.id, serial: state.serial },
+      born: record.clock - (state.previousEffectTime || 0), repelOnly: profile.repelOnly,
+      anchors: null, inside: new Set(), lastHit: new WeakMap()
+    };
+  }
+  captureTrainingField(actor, serial) {
+    const field = this.timelines.get(actor)?.trainingField;
+    if (!field) return;
+    if (field.serial === serial) field.anchors = snapshotEffectAnchors(field.graph);
+    else if (field.anchors) field.graph.frozenAnchors = field.anchors;
+  }
+  noteTrainingFieldHit(actor, target, state) {
+    const record = this.timelines.get(actor), field = record?.trainingField;
+    if (field && (field.serial === state.serial || state.context?.poseId === field.state.poseId)) {
+      field.lastHit.set(target, record.clock);
+    }
+  }
+  trainingContacts(actor, targets) {
+    const record = this.timelines.get(actor), field = record?.trainingField;
+    if (!field || actor.dead || actor.disposed || actor.scriptRemoved) return [];
+    const time = record.clock - field.born;
+    if (time > field.end) { record.trainingField = null; return []; }
+    if (time < field.start) return [];
+    setEffectTime(field.graph, time);
+    const volumes = [];
+    for (const node of field.nodes) {
+      const keys = node.source.keys;
+      if (field.repelOnly && (time < keys[0][0] || time > keys.at(-1)[0])) continue;
+      const matrix = effectNodeMatrix(field.graph, node);
+      const box = matrix && worldBounds(nativeEffectBounds(node.source), matrix);
+      if (box) volumes.push({ ...box, effectId: field.id, nodeName: node.source.name, time });
+    }
+    const inside = new Set(), contacts = [];
+    for (const target of targets) {
+      const hit = this.contact(volumes, target);
+      if (!hit) continue;
+      inside.add(target);
+      // The cast's ordinary strike and a field entry can occur on the same
+      // step. Give that target one reaction and require it to leave before
+      // another entry can trigger.
+      if (field.inside.has(target) || record.clock - (field.lastHit.get(target) ?? -Infinity) < FIELD_REENTRY_SECONDS) continue;
+      field.lastHit.set(target, record.clock);
+      contacts.push({ target, hit: { ...hit, fieldCenter: volumes.find(volume => volume.nodeName === hit.effectNode)?.center },
+        state: field.state, attack: field.attack, repelOnly: field.repelOnly });
+    }
+    field.inside = inside;
+    return contacts;
   }
   sample(actor, state, attack, fps = 30) {
     if (this.disposed || !actor || actor.dead || actor.disposed || actor.scriptRemoved || actor.combat?.reacting || state.blend || !attack.bones?.includes('effect')) return [];
@@ -123,6 +197,7 @@ export class NativeEffectContacts {
     const id=graph.id;
     if (!graph.attackNodes.length) return [];
     const volumes = [], savedFrame = actor.character.frame, savedSource = actor.character.source;
+    const thunder = (state.poseId ?? state.pose?.id) === BLADE_THUNDER_POSE && id === 'pos565';
     try {
       for (const range of activeIntervals(state, attack, fps)) {
         const count = Math.min(NATIVE_EFFECT_CONTACT_ADAPTER.maxSamplesPerInterval, Math.max(1, Math.ceil((range.end - range.start) / NATIVE_EFFECT_CONTACT_ADAPTER.sampleStep)));
@@ -137,8 +212,16 @@ export class NativeEffectContacts {
             const { source } = node;
             if (time < source.keys[0][0] || time > source.keys.at(-1)[0]) continue;
             const matrix = effectNodeMatrix(graph, node); if (!matrix) continue;
-            const box = worldBounds(nativeEffectBounds(source), matrix); if (!box) continue;
-            volumes.push({ ...box, effectId: id, nodeName: source.name, time });
+            const bounds = nativeEffectBounds(source);
+            const strike = thunder && BLADE_THUNDER_STRIKES.includes(source.name) ? source.name : null;
+            if (strike) {
+              // Follow each lightning column down to its ground anchor.
+              const gap = Math.max(0, bounds.center.z - bounds.half.z);
+              bounds.center.z -= gap / 2;
+              bounds.half.z += gap / 2;
+            }
+            const box = worldBounds(bounds, matrix); if (!box) continue;
+            volumes.push({ ...box, effectId: id, nodeName: source.name, time, ...(strike && { strike }) });
           }
         }
       }
@@ -155,7 +238,12 @@ export class NativeEffectContacts {
     }
     return null;
   }
-  clearActor(actor) { this.actors.delete(actor); this.timelines.delete(actor); }
+  clearActor(actor, { keepTrainingField = false } = {}) {
+    this.actors.delete(actor);
+    const record = this.timelines.get(actor);
+    if (keepTrainingField && record?.trainingField) record.effects.length = 0;
+    else this.timelines.delete(actor);
+  }
   clear() { this.actors.clear(); this.timelines.clear(); }
   dispose() { this.clear(); this.disposed = true; }
 }

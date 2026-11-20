@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import * as THREE from '../dist/vendor/three.module.js';
 import { MeteorGame } from '../dist/engine.js';
-import { decodeNativeText, parsePos, parseAct, NativeCombatController, NativePoseTimeline, createNativeDamageResolver } from '../dist/native-combat.js';
+import { decodeNativeText, parsePos, parseAct, NativeCombatController, NativePoseTimeline, createNativeDamageResolver, nativeAttackFrames } from '../dist/native-combat.js';
+import { NATIVE_MOVE_CATALOG } from '../dist/native-move-catalog.js';
 
 const poses = parsePos(decodeNativeText(await readFile(new URL('../dist/assets/native/combat/P0.POS', import.meta.url))));
 const actions = parseAct(decodeNativeText(await readFile(new URL('../dist/assets/native/combat/character.act', import.meta.url))));
@@ -45,6 +46,60 @@ test('the blade automatic chain preserves attackless stages and every original a
   assert.ok(state.segments.every(s => s.context === context));
   assert.equal(paid, 1, 'linked animation stages do not charge another attack cost');
   assert.equal(combat.busy, false);
+});
+
+test('all catalog commands and ACT entry variants sample their full POS attack windows', t => {
+  const sourceChain = id => {
+    const chain = new Map();
+    for (let pose = poses.get(id); pose?.valid && !chain.has(pose.id); pose = poses.get(pose.link)) chain.set(pose.id, pose);
+    return chain;
+  };
+  const entries = new Map(), reachableByWeapon = new Map();
+  for (const move of NATIVE_MOVE_CATALOG) {
+    entries.set(move.id, { move, start: move.poseId });
+    const reachable = reachableByWeapon.get(move.weapon) ?? new Set();
+    for (const id of sourceChain(move.poseId).keys()) reachable.add(id);
+    reachableByWeapon.set(move.weapon, reachable);
+  }
+  for (const move of NATIVE_MOVE_CATALOG) for (const predecessor of reachableByWeapon.get(move.weapon)) {
+    const start = actions.resolveTransition(predecessor, move.poseId);
+    if (start == null) continue;
+    const key = `${move.weapon}-${start}`;
+    if (!entries.has(key)) entries.set(key, { move, start, predecessor });
+  }
+
+  for (const { move, start, predecessor } of entries.values()) {
+    const expected = new Map();
+    for (const pose of sourceChain(start).values()) for (const [index, attack] of pose.attacks.entries()) {
+      const entryFrame = predecessor != null && pose.id === start ? pose.entryFrame : pose.start;
+      const from = Math.max(attack.start, entryFrame), to = Math.min(attack.end, pose.end);
+      if (from <= to) expected.set(`${pose.id}:${index}`, { from, to });
+    }
+    for (const step of [1 / 60, 30]) {
+      const label = `${move.id} entering ${start} with step ${step}`;
+      const combat = controller(move.weapon), sampled = new Map();
+      if (predecessor != null) assert.ok(combat.attack({ poseId: predecessor }), label);
+      assert.ok(combat.attack({ poseId: move.poseId, context: move }), label);
+      for (let time = 0; time < 30 && combat.busy; time += step) {
+        const grounded = step === 30 || move.stance !== 'air' || time >= 2;
+        for (const state of combat.update(step, { grounded })?.segments ?? []) {
+          if (state.context !== move) continue;
+          for (const attack of state.attacks) {
+            const key = `${state.poseId}:${attack.index}`;
+            const frames = sampled.get(key) ?? new Set();
+            for (const frame of nativeAttackFrames(state, attack)) frames.add(frame);
+            sampled.set(key, frames);
+          }
+        }
+      }
+      assert.equal(combat.busy, false, label);
+      assert.deepEqual([...sampled.keys()], [...expected.keys()], label);
+      for (const [key, { from, to }] of expected) {
+        for (let frame = from; frame <= to; frame++) assert.ok(sampled.get(key).has(frame), `${label} missed ${key} at ${frame}`);
+      }
+    }
+  }
+  t.diagnostic(`${NATIVE_MOVE_CATALOG.length} catalog commands and ${entries.size - NATIVE_MOVE_CATALOG.length} ACT entry variants`);
 });
 
 test('a buffered input keeps the old Action then uses native NextPose time before entering the next Action', () => {

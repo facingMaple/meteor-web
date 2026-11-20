@@ -8,7 +8,7 @@ export const NATIVE_ITEM_PICKUP_PROFILE = Object.freeze({
     effect: 'Meteor.res type2/id1 Item01 肉包: stat2 mode0 value300, valueOffset53204; 004d4d30 clamps current HP to 0..effective maxHP.',
     interaction: 'Browser adapter: grounded automatic proximity pickup plus optional manual assist, horizontal radius1.8 world units, vertical tolerance2; exact EXE range/state gates remain unverified.',
     fullHp: 'Browser adapter: keep positive immediate HP/rage items when that resource is full; original full-HP consumption and item respawn timing remain unverified.',
-    scope: 'Verified world RES records1/2/3/4/5/7/8/16/17/18/27/28/29/30/31 and available original weapon-manifest records. Unsupported effects remain unconsumed; no automatic respawn.'
+    scope: 'World RES records1/2/3/4/5/7/8/16/17/18/27/28/29/30/31, refinement crystals9/23/24/25/26 and available original weapons. Crystal parameter17 selects the held weapon family variant; parameter13 supplies its respawn delay. Other item respawn remains pending.'
   })
 });
 
@@ -199,7 +199,18 @@ export function nativeMeatbunEffect(record) {
 }
 
 const worldItemIds=new Set([2,3,4,5,7,8,16,17,18,27,28,29,30,31]);
+const refinementModels = new Map([[9, 'item09'], [23, 'item0901'], [24, 'item0902'], [25, 'item0903'], [26, 'item0904']]);
+export function nativeRefinementEffect(record) {
+  if (record?.type !== 2 || normalizedModel(record.model) !== refinementModels.get(record.id)) return null;
+  const variant = record.parameters?.find(parameter => parameter.words[0] === 17)?.words[1];
+  const respawn = record.parameters?.find(parameter => parameter.words[0] === 13)?.words[1];
+  if (!Number.isInteger(variant) || variant < 0 || variant > 4 || !Number.isFinite(respawn) || respawn <= 0) return null;
+  return { kind: 'refinement', itemId: record.id, name: record.name, model: normalizedModel(record.model),
+    variant, respawn, record, recordOffset: record.offset, description: '炼化当前兵器' };
+}
 export function nativeWorldItemEffect(record){
+  const refinement = nativeRefinementEffect(record);
+  if (refinement) return refinement;
   const bun=nativeMeatbunEffect(record);
   if(bun)return {...bun,record,kind:'immediate',statKey:2,value:bun.heal,duration:0,description:`气血 +${bun.heal}`};
   if(!worldItemIds.has(record?.id)||!/^item\d+$/i.test(normalizedModel(record.model)))return null;
@@ -212,20 +223,23 @@ export function nativeWorldItemEffect(record){
 }
 
 export class NativeItemSystem {
-  constructor({ itemRecords, weaponItems = [], getInstances = () => [], canReach = () => true, onPickup = () => {}, profile = NATIVE_ITEM_PICKUP_PROFILE } = {}) {
+  constructor({ itemRecords, weaponItems = [], getInstances = () => [], canReach = () => true, onPickup = () => {}, onRefine = async () => false, profile = NATIVE_ITEM_PICKUP_PROFILE } = {}) {
     this.getInstances = getInstances; this.canReach = canReach; this.onPickup = onPickup; this.profile = profile;
     this.itemsByModel = new Map(); this.consumed = new WeakSet(); this.disposed = false;
     this.consumedNames=new Set();this.visuals=new Map();
+    this.onRefine = onRefine;
+    this.weaponItems = new Map([...records(weaponItems)].filter(item => item.available).map(item => [Number(item.itemId), item]));
+    this.pending = new WeakSet(); this.pendingActors = new WeakSet(); this.respawns = new Map(); this.epoch = 0;
     for (const record of records(itemRecords)) {
       const effect = nativeWorldItemEffect(record); if (effect) this.itemsByModel.set(effect.model, effect);
     }
     for(const item of records(weaponItems))if(item.available)this.itemsByModel.set(normalizedModel(item.modelId),{kind:'weapon',itemId:Number(item.itemId),name:item.name,description:'收为副兵器',record:item});
   }
   peek(actor) {
-    if (this.disposed || !actor?.root?.position || actor.dead || actor.disposed || actor.scriptRemoved || actor.scriptInputBlocked || actor.switchingWeapon || !Number.isFinite(actor.hp) || actor.hp <= 0 || !Number.isFinite(actor.maxHp) || actor.maxHp <= 0) return null;
+    if (this.disposed || !actor?.root?.position || this.pendingActors.has(actor) || actor.dead || actor.disposed || actor.scriptRemoved || actor.scriptInputBlocked || actor.switchingWeapon || !Number.isFinite(actor.hp) || actor.hp <= 0 || !Number.isFinite(actor.maxHp) || actor.maxHp <= 0) return null;
     const origin = actor.root.position, candidates = [];
     for (const instance of this.getInstances() || []) {
-      if (!instance?.root?.position || this.consumed.has(instance) || disabled(instance.attributes?.active) || disabled(instance.attributes?.interactive)) continue;
+      if (!instance?.root?.position || this.pending.has(instance) || this.consumed.has(instance) || disabled(instance.attributes?.active) || disabled(instance.attributes?.interactive)) continue;
       const effect = this.itemsByModel.get(normalizedModel(instance.source?.properties?.model)); if (!effect) continue;
       const point = instance.root.position, distance = Math.hypot(point.x - origin.x, point.z - origin.z);
       if(instance.dropOwner===actor){if(distance<=this.profile.radius+.1)continue;instance.dropOwner=null;}
@@ -233,7 +247,14 @@ export class NativeItemSystem {
       const fullHp=effect.heal>0&&actor.hp>=actor.maxHp;
       const fullRage=effect.kind==='immediate'&&effect.statKey===6&&(actor.rage||0)>=nativeRageMaximum(actor);
       const fullWeapons=effect.kind==='weapon'&&Number.isInteger(actor.weapon2Id)&&actor.weapon2Id>0;
-      candidates.push({ ...effect, instance, objectName: instance.name, distance, full:fullHp||fullRage||fullWeapons,fullReason:fullWeapons?'full-weapons':fullRage?'full-rage':'full-hp', provenance: this.profile.provenance });
+      let weapon;
+      if (effect.kind === 'refinement') {
+        const current = this.weaponItems.get(actor.weaponId);
+        const model = normalizedModel(current?.modelId).replace(/_\d+([rl]?)$/, `_${effect.variant}$1`);
+        weapon = [...this.weaponItems.values()].find(item => normalizedModel(item.modelId) === model);
+        if (!weapon || weapon.itemId === actor.weaponId) continue;
+      }
+      candidates.push({ ...effect, weapon, instance, objectName: instance.name, distance, full:fullHp||fullRage||fullWeapons,fullReason:fullWeapons?'full-weapons':fullRage?'full-rage':'full-hp', provenance: this.profile.provenance });
     }
     candidates.sort((a, b) => a.distance - b.distance || a.objectName.localeCompare(b.objectName));
     const reachable=candidates.filter(candidate=>this.canReach(actor,candidate.instance));
@@ -243,6 +264,7 @@ export class NativeItemSystem {
     const candidate = this.peek(actor);
     if (!candidate) return { ok: false, reason: 'no-item', healed: 0 };
     if (candidate.full) return { ok: false, reason: candidate.fullReason, healed: 0, candidate };
+    if (candidate.kind === 'refinement') return this._refine(actor, candidate);
     // Native stat2/current HP is clamped by stat1/max HP (004d4d30).
     const before=actor.hp,rageBefore=actor.rage||0;
     let applied;
@@ -250,6 +272,27 @@ export class NativeItemSystem {
     else if(candidate.itemId===1){actor.hp=Math.max(0,Math.min(actor.maxHp,before+candidate.heal));applied={refreshed:false};}
     else applied=useNativeScriptItem(actor,candidate.record);
     if(!applied)return {ok:false,reason:'unsupported-effect',healed:0};
+    return this._commitPickup(candidate, actor, applied, before, rageBefore);
+  }
+  async _refine(actor, candidate) {
+    const epoch = this.epoch, weaponId = actor.weaponId, instance = candidate.instance;
+    const pending = this.pending, pendingActors = this.pendingActors;
+    pending.add(instance); pendingActors.add(actor);
+    const valid = () => epoch === this.epoch && !this.disposed && !actor.dead && !actor.disposed && !actor.scriptRemoved &&
+      !disabled(instance.attributes?.active) && !disabled(instance.attributes?.interactive);
+    try {
+      const applied = await this.onRefine(actor, candidate, () => valid() && actor.weaponId === weaponId);
+      if (!applied || !valid()) return { ok: false, reason: 'refinement-cancelled', healed: 0 };
+      this.respawns.set(instance, { remaining: candidate.respawn, active: instance.attributes.active ?? 1, interactive: instance.attributes.interactive ?? 1 });
+      return this._commitPickup(candidate, actor, { refreshed: false }, actor.hp, actor.rage || 0);
+    } catch (error) {
+      console.warn('炼化兵器未能完成', error);
+      return { ok: false, reason: 'refinement-failed', healed: 0 };
+    } finally {
+      pending.delete(instance); pendingActors.delete(actor);
+    }
+  }
+  _commitPickup(candidate, actor, applied, before, rageBefore) {
     const after=actor.hp;
     const instance = candidate.instance;
     this.consumed.add(instance);
@@ -259,11 +302,21 @@ export class NativeItemSystem {
     instance.setCollision?.(false);
     const result = { ok: true, reason: 'picked-up', itemId: candidate.itemId, name: candidate.name, objectName: candidate.objectName,
       healed: after - before, hpBefore: before, hpAfter: after, maxHp: actor.maxHp, effectValue: candidate.value,
-      description:candidate.description,kind:candidate.kind,statKey:candidate.statKey,duration:candidate.duration,refreshed:applied.refreshed,rageGained:(actor.rage||0)-rageBefore,actor,
+      description:candidate.kind==='refinement'?candidate.weapon.name:candidate.description,kind:candidate.kind,statKey:candidate.statKey,duration:candidate.duration,refreshed:applied.refreshed,rageGained:(actor.rage||0)-rageBefore,actor,
       recordOffset: candidate.recordOffset, valueOffset: candidate.valueOffset, instance, provenance: this.profile.provenance };
     this.onPickup(result); return result;
   }
-  prepareWorld(){for(const instance of this.getInstances()||[])if(this.itemsByModel.has(normalizedModel(instance.source?.properties?.model)))instance.setCollision?.(false);}
+  prepareWorld(dt = 0) {
+    const step = Number.isFinite(dt) ? Math.max(0, dt) : 0;
+    for (const [instance, state] of this.respawns) {
+      state.remaining -= step;
+      if (state.remaining > 0) continue;
+      instance.attributes.active = state.active; instance.attributes.interactive = state.interactive;
+      instance.setActive?.(state.active); instance.setCollision?.(false);
+      this.consumed.delete(instance); this.consumedNames.delete(instance.name); this.respawns.delete(instance);
+    }
+    for(const instance of this.getInstances()||[])if(this.itemsByModel.has(normalizedModel(instance.source?.properties?.model)))instance.setCollision?.(false);
+  }
   updateVisuals(time){
     for(const instance of this.getInstances()||[]){
       if(!this.itemsByModel.has(normalizedModel(instance.source?.properties?.model)))continue;
@@ -273,6 +326,6 @@ export class NativeItemSystem {
       model.quaternion.copy(base.quaternion);model.rotateY(time);model.updateMatrixWorld(true);
     }
   }
-  reset() { this.consumed = new WeakSet();this.consumedNames.clear();for(const base of this.visuals.values()){base.model.position.copy(base.position);base.model.quaternion.copy(base.quaternion);}this.visuals.clear(); }
+  reset() { this.epoch++; this.pending = new WeakSet(); this.pendingActors = new WeakSet(); this.respawns.clear(); this.consumed = new WeakSet();this.consumedNames.clear();for(const base of this.visuals.values()){base.model.position.copy(base.position);base.model.quaternion.copy(base.quaternion);}this.visuals.clear(); }
   dispose() { this.reset(); this.disposed = true; }
 }

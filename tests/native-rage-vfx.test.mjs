@@ -267,6 +267,69 @@ test('original weapon DES dummies bind light to native W7_0 coordinates even whe
   vfx.dispose();
 });
 
+test('腥风 delayed flash follows the next spinning pose and its effect clock', () => {
+  const { actor, vfx } = fixture('blade');
+  const context = { poseId: 310, rage: 100 };
+  try {
+    const previous = vfx.sample(actor, { ...state(311, .27, context, 2), effectTime: .27 });
+    const flash = previous.nodes.find(node => node.source.name === 'Rectangle_15').mesh;
+    vfx.update(0);
+    assert.equal(flash.visible, false);
+
+    const blend = { from: { source: 0, frame: 7007 }, to: { source: 0, frame: 7041 }, weight: 1 };
+    vfx.sample(actor, { ...state(312, 0, context, 3), blend, consumed: .18 });
+    vfx.sample(actor, { ...state(312, .45, context, 3), effectTime: .45 });
+    actor.root.position.set(6, .5, -4);
+    actor.root.rotation.y = Math.PI / 3;
+    vfx.update(0);
+
+    const origin = new THREE.Vector3(0, 0, 15).applyMatrix4(actor.character.nativeSpace.matrixWorld);
+    assert.equal(flash.visible, true, 'the delayed key is drawn during the left spin');
+    assert.ok(new THREE.Vector3().setFromMatrixPosition(flash.matrix).distanceTo(origin) < 1e-8);
+    assert.ok(Math.abs(previous.time - .9) < 1e-8);
+    vfx.update(.2);
+    assert.equal(flash.visible, true, 'a render-only wait does not advance a flash attached to a combat pose');
+
+    actor.combat = { reacting: true };
+    vfx.sample(actor, state(95, 0, null, 4));
+    vfx.update(0);
+    assert.ok(!vfx.active.includes(previous), 'an interrupted spin clears its delayed flash');
+  } finally { vfx.dispose(); }
+});
+
+test('腥风 weapon light uses the mounted blade grip for stock and collection appearances', () => {
+  const { actor, vfx } = fixture('blade');
+  const model = actor.weaponModel;
+  actor.root.position.set(8, .5, -12);
+  actor.root.rotation.y = .8;
+  model.position.set(10, 18, 30);
+  model.rotation.set(Math.PI / 2, -.4, .3);
+  try {
+    for (const [name, base] of [
+      ['w5_0', 'w5_0'],
+      ['collection-w5_1', 'w5_1'],
+      ['collection-festive-w5_4', 'w5_4']
+    ]) {
+      model.name = name;
+      const socket = manifest.weaponAttachments[base].d_wpnrs;
+      const [w, x, y, z] = socket.quaternion;
+      const rotation = new THREE.Quaternion(x, y, z, w).normalize();
+      for (const [pose, time, nodeName] of [[310, .95, 'Board_6'], [314, 1.05, 'Sphere_8'], [331, .07, 'AttackThunder']]) {
+        const effect = vfx.sample(actor, state(pose, time, { poseId: 310 }, pose));
+        vfx.update(0);
+        const node = effect.nodes.find(n => n.source.name === nodeName);
+        assert.equal(node.mesh.visible, true);
+        const key = sampleEffectKeys(node.source.keys, time);
+        model.updateWorldMatrix(true, false);
+        const expected = new THREE.Vector3(...key.slice(1, 4)).applyQuaternion(rotation).add(new THREE.Vector3(...socket.position))
+          .applyAxisAngle(new THREE.Vector3(1, 0, 0), -Math.PI / 2).applyMatrix4(model.matrixWorld);
+        assert.ok(new THREE.Vector3().setFromMatrixPosition(node.mesh.matrix).distanceTo(expected) < 1e-8, `${name} ${nodeName}`);
+        vfx.clearActor(actor);
+      }
+    }
+  } finally { vfx.dispose(); }
+});
+
 test('automatic rage links play their own EF timeline and pay no second cost', () => {
   const { actor, vfx } = fixture(); let payments = 0;
   const move = NATIVE_MOVE_CATALOG.find(move => move.poseId === 562), seen = new Set();

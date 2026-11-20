@@ -180,6 +180,29 @@ export class NativeMusketSystem {
   }
   get size() { return 0; }
   pause(value = true) { this.paused = !!value; }
+  _trace(owner, position, direction, range, shot) {
+    const to = position.clone().addScaledVector(direction.clone().normalize(), range);
+    const world = worldSegmentContact(this, position, to, 0);
+    if (world) to.copy(world.center);
+    shot.position.copy(to);
+    const contacts = [], seen = new Set();
+    for (const target of this.getTargets(shot) || []) {
+      if (!target || target === owner || target.id === owner.id || target.dead || target.disposed ||
+          target.scriptRemoved || target.hp <= 0 || !this.canHit(owner, target)) continue;
+      const key = target.id ?? target;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const t = sweepNativeMusketBody(position, to, target);
+      if (t != null) contacts.push({ target, point: position.clone().lerp(to, t) });
+    }
+    return { to, world, contacts };
+  }
+  aimPoint(owner, position, direction) {
+    const trace = this._trace(owner, position, direction, NATIVE_MUSKET_PROFILE.range, { owner, position: position.clone(), profile: NATIVE_MUSKET_PROFILE });
+    let distance = trace.world ? position.distanceTo(trace.to) : Infinity;
+    for (const contact of trace.contacts) distance = Math.min(distance, position.distanceTo(contact.point));
+    return position.clone().addScaledVector(direction, Number.isFinite(distance) ? Math.max(1, distance) : 24);
+  }
   // A caller may shorten the query, but never extend the original maximum.
   fire({ owner, position, direction, range = NATIVE_MUSKET_PROFILE.range, sourcePosition = null, context = {} } = {}) {
     if (this.disposed || this.paused || !owner || !position || !direction || !Number.isFinite(range) || range <= 0 || direction.lengthSq() < 1e-12) return null;
@@ -187,19 +210,8 @@ export class NativeMusketSystem {
     const blocked = sourcePosition && worldSegmentContact(this, sourcePosition, position, 0);
     if (blocked) { shot.position.copy(blocked.center); shot.removalReason = 'world'; this.onWorldHit(shot, blocked); return shot; }
     range = Math.min(range, NATIVE_MUSKET_PROFILE.range);
-    const to = position.clone().addScaledVector(direction.clone().normalize(), range), world = worldSegmentContact(this, position, to, 0);
-    if (world) to.copy(world.center);
-    shot.position.copy(to);
+    const { world, contacts } = this._trace(owner, position, direction, range, shot);
     // The native loop does not shorten the ray after hitting a fighter.
-    // Keep the provider's stable actor order; callbacks may remove targets.
-    const contacts = [], seen = new Set();
-    for (const target of this.getTargets(shot) || []) {
-      if (!target || target === owner || target.id === owner.id || target.dead || target.disposed || target.scriptRemoved || target.hp <= 0 || !this.canHit(owner,target)) continue;
-      const key = target.id ?? target;
-      if (seen.has(key)) continue; seen.add(key);
-      const t = sweepNativeMusketBody(position, to, target);
-      if (t != null) contacts.push({ target, point: position.clone().lerp(to, t) });
-    }
     if (world) { shot.removalReason = 'world'; this.onWorldHit(shot, world); }
     if (contacts.length) shot.removalReason = 'actor';
     for (const { target, point } of contacts) this.onActorHit(shot, target, point);

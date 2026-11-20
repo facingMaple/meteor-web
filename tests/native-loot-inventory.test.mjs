@@ -14,7 +14,80 @@ const weapons=(await json('../dist/assets/original/weapon-models/manifest.json')
 const weapon=weapons.find(w=>w.available&&w.modelId==='w0_0'),other=weapons.find(w=>w.available&&w.modelId==='w1_0');
 const actor=()=>({hp:500,maxHp:1000,rage:0,root:new T.Group(),grounded:true,hero:true,weaponId:weapon.itemId,weapon2Id:null,combat:{busy:false}});
 function item(name,model){const root=new T.Group(),visual=new T.Group();root.add(visual);return {name,root,model:visual,source:{properties:{model}},attributes:{active:1,interactive:1,collision:1},setActive(value){this.attributes.active=Number(value);root.visible=!!value;},setCollision(value){this.attributes.collision=Number(value);}};}
-function fixture(instances){const events=[],system=new NativeItemSystem({itemRecords:res.allRecords.filter(r=>r.type===2),weaponItems:weapons,getInstances:()=>instances,onPickup:e=>events.push(e)});return {system,events};}
+function fixture(instances, options = {}){const events=[],system=new NativeItemSystem({itemRecords:res.allRecords.filter(r=>r.type===2),weaponItems:weapons,getInstances:()=>instances,onPickup:e=>events.push(e),...options});return {system,events};}
+
+test('all five source crystals select the corresponding native variant of the held weapon', () => {
+  for (const [model, current, expected] of [
+    ['Item09',15,6], ['Item0901',6,15], ['Item0902',6,24], ['Item0903',6,33], ['Item0904',6,42],
+    ['Item0901',47,48], ['Item0902',51,53], ['Item0903',55,58]
+  ]) {
+    const {system}=fixture([item('crystal',model)]), hero=actor();
+    hero.weaponId=current;hero.weapon2Id=other.itemId;
+    const candidate=system.peek(hero);
+    assert.equal(candidate.kind,'refinement');
+    assert.equal(candidate.weapon.itemId,expected);
+    assert.equal(candidate.full,false,'a full secondary slot does not block refinement');
+  }
+  const {system}=fixture([item('green','Item09')]);
+  assert.equal(system.peek(actor()),null,'an already matching variant leaves the crystal available');
+});
+
+test('crystal pickup reserves one instance while loading, transforms once and reappears after its RES delay',async()=>{
+  const crystal=item('red','Item0901'),hero=actor(),peer=actor();
+  hero.weapon2Id=other.itemId;
+  let finish,changes=0;
+  const {system,events}=fixture([crystal],{onRefine:async(f,candidate,valid)=>{
+    await new Promise(resolve=>{finish=resolve});
+    if(!valid())return false;
+    changes++;f.weaponId=candidate.weapon.itemId;return true;
+  }});
+  system.prepareWorld();
+  assert.equal(crystal.attributes.collision,0,'walking through a crystal reaches its pickup volume');
+  const pending=system.tryPickup(hero);
+  assert.equal(system.tryPickup(peer).ok,false);
+  assert.equal(system.tryPickup(hero).ok,false);
+  assert.equal(crystal.attributes.active,1,'the crystal survives until the weapon is ready');
+  finish();
+  assert.equal((await pending).ok,true);
+  assert.equal(changes,1);assert.equal(events.length,1);assert.equal(hero.weaponId,15);
+  assert.equal(hero.weapon2Id,other.itemId);
+  assert.equal(crystal.root.visible,false);assert.ok(system.consumedNames.has('red'));
+  const delay=res.allRecords.find(r=>r.type===2&&r.id===23).parameters.find(p=>p.words[0]===13).words[1];
+  system.prepareWorld(delay-.01);assert.equal(crystal.root.visible,false);
+  system.prepareWorld(.02);assert.equal(crystal.root.visible,true);
+  assert.equal(crystal.attributes.interactive,1);assert.equal(system.consumedNames.has('red'),false);
+  assert.equal(system.peek(peer).weapon.itemId,15);
+});
+
+test('crystal load failure and round changes preserve the old weapon and the unconsumed crystal',async()=>{
+  const crystal=item('red','Item0901'),hero=actor();
+  const game=Object.assign(Object.create(MeteorGame.prototype),{
+    running:true,paused:false,sessionRequest:1,_hud(){},
+    _prepareWeapon:async()=>{throw Error('missing')},
+    _equip:async()=>assert.fail('a missing model must not change the weapon')
+  });
+  const {system}=fixture([crystal],{onRefine:(f,candidate,valid)=>game._refineWeapon(f,candidate,valid)});
+  const warn=console.warn;console.warn=()=>{};
+  try{assert.equal((await system.tryPickup(hero)).ok,false);}finally{console.warn=warn;}
+  assert.equal(hero.weaponId,6);assert.equal(hero.switchingWeapon,false);assert.equal(crystal.attributes.active,1);
+  let finish;game._prepareWeapon=()=>new Promise(resolve=>{finish=resolve});
+  const pending=system.tryPickup(hero);
+  game.sessionRequest++;system.reset();finish([]);
+  assert.equal((await pending).ok,false);
+  assert.equal(hero.weaponId,6);assert.equal(crystal.attributes.active,1);assert.equal(system.consumedNames.size,0);
+});
+
+test('guest loot snapshots hide consumed crystals and restore them when the host respawns them',()=>{
+  const crystal=item('D_Item21','Item0901');
+  const game=Object.assign(Object.create(MeteorGame.prototype),{
+    currentMap:{props:{instances:new Map([['d_item21',crystal]])}},droppedWeapons:new Map()
+  });
+  game._applyLootState({consumed:['D_Item21'],drops:[]});
+  assert.equal(crystal.root.visible,false);
+  game._applyLootState({consumed:[],drops:[]});
+  assert.equal(crystal.root.visible,true);assert.equal(crystal.attributes.interactive,1);
+  assert.equal(crystal.attributes.collision,0);
+});
 
 test('two simultaneous players cannot consume the same real RES weapon twice; capacity preserves the next one',()=>{
   const first=item('weapon1',other.modelId),second=item('weapon2',other.modelId),{system,events}=fixture([first,second]),a=actor(),b=actor();
@@ -92,11 +165,13 @@ test('guest applies the host inventory, consumed props and pickup feedback once 
   const poses=parsePos(await readFile(new URL('../dist/assets/original/characters/p0/p0.pos',import.meta.url),'utf8'));
   function fighter(id){const f=actor();f.networkId=id;f.combat=new NativeCombatController({poses,actions:new Map()},{weapon:'sword'});f.combat.play(6,{force:true});f.character={frame:0,source:0,setPoseFrame(source,frame){this.source=source;this.frame=frame;}};return f;}
   const hero=fighter('guest'),peer=fighter('host');let effects=0,loot;
-  const game={hero,enemies:[peer],weaponItems:new Map(weapons.map(w=>[w.itemId,w])),pause(){},_hud(){},_applyLootState(state){loot=state;},_equip:async(f,id)=>{f.weaponId=id;},rageVfx:{playItem(){effects++;},sample(){}}};
+  const game={hero,enemies:[peer],weaponItems:new Map(weapons.map(w=>[w.itemId,w])),pause(){},_hud(){},_applyLootState(state){loot=state;},_equip:async(f,id,options)=>{f.weaponId=id;f.weaponRefined=options?.refinement===true;},rageVfx:{playItem(){effects++;},sample(){}}};
   const session=new NetworkGame(game,{host:false,playerId:'guest',send(){}},{players:[{id:'host'},{id:'guest'}]});session.active=true;hero.pickupSerial=peer.pickupSerial=0;
   const frame={sequence:1,time:1,loot:{consumed:['D_Wpn01'],drops:[]},players:[hero,peer].map(f=>({id:f.networkId,position:[0,0,0],angle:0,hp:800,maxHp:1000,rage:0,dead:false,grounded:true,guard:false,weaponId:other.itemId,weapon2Id:weapon.itemId,pickupSerial:1,pose:6,source:0,frame:poses.get(6).start,serial:1,kills:0,deaths:0}))};
+  frame.players[0].weaponRefined=true;
   frame.players[0].statuses=[{id:3,name:'铜皮',statKey:4,remaining:89,value:20,period:0}];
   session.apply(frame);assert.equal(hero.weaponId,other.itemId);assert.equal(hero.weapon2Id,weapon.itemId);assert.equal(hero.hp,800);assert.deepEqual(loot,frame.loot);assert.equal(game.lootReplica,true);assert.equal(effects,2);assert.deepEqual(hero.networkItemStatuses,frame.players[0].statuses);
+  assert.equal(hero.weaponRefined,true,'the guest displays the host-selected native refinement model');
   session.apply(frame);session.apply({...frame,sequence:2});assert.equal(effects,2,'snapshots and retries cannot replay pickup effects');session.dispose();assert.equal(game.lootReplica,undefined);
 });
 

@@ -345,6 +345,235 @@ function settle(game, seen = new Set()) {
   return seen;
 }
 
+test('blade spin repeats against nearby opponents and opponents approaching mid-spin', async t => {
+  for (const [name, poseId, finish, keys, rageCost, distance] of [
+    ['旋风', 374, 375, ['left', 'right'], 0, 4.8],
+    ['狂风', 572, 573, ['right', 'left'], 60, 7.5]
+  ]) await t.test(name, async () => {
+    const diagonal = distance / Math.SQRT2;
+    const { game, events } = await fixture([v(0, 0, 1.4), v(diagonal, 0, diagonal), v(-30, 0, 0)]);
+    const { hero } = game, [nearby, approaching, distant] = game.enemies;
+    await game._equip(hero, 'blade');
+    hero.rage = 100;
+    manual(game, keys);
+    assert.equal(hero.combat.currentMove?.poseId, poseId);
+    assert.equal(hero.rage, 100 - rageCost);
+
+    const { start, end } = data.poses.get(poseId).attacks[0];
+    const dt = 1 / 60;
+    for (let i = 0; i < 180 && hero.combat.timeline.frame < start + 2; i++) game._stepWorld(dt);
+    assert.equal(hero.combat.timeline.pose.id, poseId);
+    assert.ok(hero.combat.timeline.frame >= start + 2 && hero.combat.timeline.frame < end);
+    assert.equal(approaching.hp, approaching.maxHp, 'the approaching fighter starts outside the spin');
+    const approachTime = game.elapsed;
+    approaching.scriptControl = { paused: false, moveTarget: hero.root.position, speedScale: 1.6 };
+
+    const seen = new Set();
+    for (let i = 0; i < 300 && hero.combat.busy; i++) {
+      seen.add(hero.combat.timeline.pose.id);
+      game._stepWorld(dt);
+    }
+    assert.ok(seen.has(finish), 'the original finishing slash still plays');
+    assert.equal(hero.combat.busy, false);
+    assert.equal(hero.rage, 100 - rageCost);
+
+    const hitsFor = target => events.filter(e => e.type === 'hit' && e.attackerHero && e.targetName === target.name);
+    for (const target of [nearby, approaching]) {
+      const hits = hitsFor(target);
+      const spins = hits.filter(e => e.poseId === poseId);
+      assert.ok(spins.length >= 2, `${target.name} should take multiple spin hits, got ${spins.length}`);
+      if (target === approaching) assert.ok(spins[0].time > approachTime);
+      for (let i = 1; i < spins.length; i++) assert.ok(spins[i].time - spins[i - 1].time >= 10 / data.fps - dt);
+      assert.ok(hits.filter(e => e.poseId === finish).length <= 1);
+      assert.ok(spins.every(e => e.amount > 0));
+      assert.equal(target.maxHp - target.hp, hits.reduce((total, hit) => total + hit.amount, 0));
+    }
+    assert.equal(distant.hp, distant.maxHp);
+    assert.equal(hitsFor(distant).length, 0);
+  });
+});
+
+test('a blade spin can hit again after its opening knockdown', async t => {
+  for (const [name, poseId, keys, position] of [
+    ['旋风', 374, ['left', 'right'], v(1.6, 0, 0)],
+    ['狂风', 572, ['right', 'left'], v(0, 0, -2.6)]
+  ]) await t.test(name, async () => {
+    const { game, events } = await fixture([position]);
+    const { hero } = game, [target] = game.enemies;
+    await game._equip(hero, 'blade');
+    hero.rage = 100;
+    manual(game, keys);
+
+    const phases = new Set();
+    for (let i = 0; i < 360 && (hero.combat.busy || target.combat.reacting); i++) {
+      game._stepWorld(1 / 60);
+      phases.add(target.combat.reactionPhase);
+    }
+    const spins = events.filter(e => e.type === 'hit' && e.poseId === poseId && e.targetName === target.name);
+    assert.equal(spins[0]?.knockdown, true, 'the opening hit initiates the original falling reaction');
+    assert.ok(spins.length >= 2, `opening knockback left only ${spins.length} spin hit`);
+    assert.ok(spins.every(hit => hit.amount > 0));
+    assert.ok(phases.has('down') && phases.has('recover'));
+    assert.equal(target.dead, false);
+    assert.equal(target.combat.reacting, false);
+  });
+});
+
+test('blade 腥风 repeats both spinning cuts on one opponent and lands the final chop', async t => {
+  for (const [name, position, lock] of [
+    ['front', v(0, 0, 1.4), false],
+    ['locked side', v(-1.6, 0, 0), true]
+  ]) await t.test(name, async () => {
+    const { game, events } = await fixture([position, v(15, 0, -15)]);
+    const { hero } = game, [target, distant] = game.enemies;
+    await game._equip(hero, 'blade');
+    hero.rage = 100;
+    if (lock) { game.action('lock'); game.action('lock', false); }
+    manual(game, ['left', 'right', 'back']);
+    assert.equal(hero.combat.currentMove?.poseId, 310);
+    assert.equal(hero.rage, 0);
+
+    const seen = new Set();
+    for (let i = 0; i < 900 && hero.combat.busy; i++) {
+      seen.add(hero.combat.timeline.pose.id);
+      game._stepWorld(1 / 60);
+    }
+    assert.deepEqual([...seen], [310, 311, 312, 313, 314, 331]);
+    assert.equal(hero.combat.busy, false);
+    assert.equal(hero.rage, 0);
+    assert.equal(events.filter(e => e.type === 'move').length, 1);
+    const hits = events.filter(e => e.type === 'hit' && e.attackerHero && e.targetName === target.name);
+    assert.deepEqual(hits.map(e => e.poseId), [310, 312, 312, 312, 313, 313, 313, 331]);
+    assert.equal(hits[0].amount, 0, 'the opening catch uses its own source damage record');
+    assert.ok(hits.slice(1).every(e => e.amount > 0));
+    assert.equal(target.maxHp - target.hp, hits.reduce((total, hit) => total + hit.amount, 0));
+    assert.equal(distant.hp, distant.maxHp);
+    assert.ok(!events.some(e => e.type === 'hit' && e.attackerHero && e.targetName === distant.name));
+  });
+});
+
+test('blade 雷斩 resolves the slash and each of its three lightning strikes separately', async t => {
+  for (const [name, position, expected] of [
+    ['close', v(0, 0, 1.4), ['blade', 'AttackLight01', 'AttackLight02', 'AttackLight03']],
+    ['far grounded', v(0, 0, 17.6), ['AttackLight03']],
+    ['outside the columns', v(0, 0, 25), []]
+  ]) await t.test(name, async () => {
+    const { game, events } = await fixture([position]);
+    const { hero } = game, [target] = game.enemies;
+    await game._equip(hero, 'blade');
+    hero.rage = 100;
+    manual(game, ['back', 'back', 'forward']);
+    assert.equal(hero.combat.currentMove?.poseId, 565);
+    assert.equal(hero.rage, 40);
+
+    for (let i = 0; i < 300 && hero.combat.busy; i++) game._stepWorld(1 / 60);
+    const hits = events.filter(e => e.type === 'hit' && e.attackerHero && e.targetName === target.name);
+    assert.deepEqual(hits.map(e => e.effectNode || 'blade'), expected);
+    assert.ok(hits.every(hit => hit.poseId === 565 && hit.amount > 0));
+    for (const [index, hit] of hits.entries()) {
+      if (index > 0) assert.ok(hit.time > hits[index - 1].time, 'successive contacts land on different steps');
+      if (!hit.effectNode) continue;
+      const node = manifest.effects.pos565.nodes.find(n => n.name === hit.effectNode);
+      assert.ok(hit.effectTime >= node.keys[0][0] && hit.effectTime <= node.keys.at(-1)[0]);
+    }
+    assert.equal(target.maxHp - target.hp, hits.reduce((total, hit) => total + hit.amount, 0));
+    assert.equal(hero.rage, 40);
+    assert.equal(hero.combat.busy, false);
+    assert.equal(events.filter(e => e.type === 'move').length, 1);
+  });
+});
+
+test('training gold shields and the sword field repel enemies arriving after the initial strike', async t => {
+  for (const [weapon, root, keys, time] of [
+    ['spear', 293, ['back','forward','forward'], .75],
+    ['hammer', 325, ['back','back','forward'], 1.05],
+    ['hammer', 567, ['back','forward','forward'], .64],
+    ['sword', 368, ['left','right','forward'], 1.97]
+  ]) await t.test(`${weapon}/${root}`, async () => {
+    const {game, events} = await fixture([v(0,.015,30)]);
+    const {hero} = game, target = game.enemies[0];
+    await game._equip(hero, weapon);
+    hero.rage = 100;
+    manual(game, keys);
+    assert.equal(hero.combat.currentMove?.poseId, root);
+    const foePose = data.poses.get(262);
+    const hp = hero.hp;
+    assert.equal(game._applyNativeHit(target, hero, {poseId:262, pose:foePose}, foePose.attacks[0], hero.root.position.clone()), true);
+    assert.ok(hero.hp < hp, 'cast protection permits HP damage');
+    assert.equal(hero.combat.currentMove?.poseId, root);
+    assert.equal(hero.combat.reacting, false, 'close hits do not cancel the cast');
+    for (let n=0; n<Math.round(time*60); n++) game._stepWorld(1/60);
+    assert.equal(events.filter(e => e.type==='hit'&&e.attackerHero).length,0);
+    // Approach the active field from the caster's rear to avoid the outgoing
+    // sword wave. Keep the target above the flat floor in the same arena.
+    const caster = hero.root.position;
+    target.root.position.copy(caster).add(v(.45,0,-.9));
+    target.root.position.y = .015;
+    const before = target.hp;
+    let height = target.root.position.y;
+    for (let n=0; n<9; n++) { game._stepWorld(1/60); height = Math.max(height, target.root.position.y); }
+    const hit = events.find(e => e.type==='hit'&&e.attackerHero&&e.poseId===root);
+    assert.ok(hit, 'an opponent entering the lingering effect must receive a real hit');
+    if (root===325 || root===567 || root===368) assert.equal(hit.trainingField,true);
+    if (root===567) assert.equal(target.hp,before,'the defensive shield repels without a second damage hit');
+    else assert.ok(target.hp<before);
+    if (hit.trainingField) assert.ok(height > .07, 'the field actually sends its target airborne');
+    else assert.ok(height > .015 || target.combat.reacting, 'receive the authored reaction');
+  });
+});
+
+test('poison bun damage interrupts a protected training cast on the actual periodic tick', async () => {
+  const {game,events}=await fixture([]), {hero}=game;
+  useNativeScriptItem(hero,data.itemRecords.get(18));
+  for(let n=0;n<300;n++)game._stepWorld(1/60);
+  const before=hero.hp;
+  hero.rage=100;
+  manual(game,['back','forward','forward']);
+  assert.equal(hero.combat.currentMove?.poseId,293);
+  for(let n=0;n<14;n++)game._stepWorld(1/60);
+  assert.equal(hero.hp,before-10);
+  assert.equal(hero.combat.reacting,true);
+  assert.equal(events.filter(event=>event.type==='item-tick'&&event.itemId===18).length,1);
+  assert.equal(game.effectContacts.timelines.get(hero)?.trainingField,undefined);
+});
+
+test('E opens the in-match arsenal and an actual picked secondary can be equipped', async () => {
+  const {game,events}=await fixture([]), {hero}=game;
+  game.sessionRequest=1;
+  const before=hero.weaponId;
+  hero.rage=37;
+  hero.weapon2Id=14;
+  assert.equal(await game.action('switch'),true);
+  assert.equal(events.at(-1).type,'training-weapon-picker');
+  game.paused=true;
+  assert.equal(await game.selectTrainingWeapon('musket'),true);
+  assert.equal(hero.weapon,'musket');
+  assert.equal(hero.rage,37);
+  const musket=hero.weaponId, secondary=hero.weapon2Id;
+  assert.notEqual(secondary,before);
+  assert.equal(await game.selectTrainingWeapon(secondary),true);
+  assert.equal(hero.weaponId,secondary);
+  assert.equal(hero.weapon2Id,musket);
+  assert.ok(hero.weaponModels.length>0);
+});
+
+test('musket rage input fires from the battle view and releases a pre-existing aiming state', async () => {
+  const {game}=await fixture([]), {hero}=game;
+  await game._equip(hero,'musket');
+  const command = () => {
+    hero.rage=100;
+    for(const key of ['back','forward','forward']){game.action(key);game.action(key,false);game.elapsed+=.06;}
+    game.action('attack');game.action('attack',false);
+    assert.equal(hero.combat.currentMove?.poseId,215);
+    assert.equal(hero.musketAim,false);
+  };
+  command(); settle(game);
+  game.action('attack'); game.action('attack',false);
+  for(let n=0;n<70;n++)tick(game);
+  assert.equal(hero.musketAim,true);
+  command();
+});
+
 test('uninterrupted qiankun ultimate renders every final slash after pose456 ends and charges rage once', async t => {
   // Test the complete visual lifetime without a hit victim's native body
   // attack interrupting it. Contact/interruption has a separate case.

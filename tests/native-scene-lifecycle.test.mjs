@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import * as THREE from '../dist/vendor/three.module.js';
 import { MeteorGame } from '../dist/engine.js';
 import { NativeMissionHost } from '../dist/native-mission-host.js';
+import { TrainingBreakables } from '../dist/training-breakables.js';
 
 // Actual DES/cmodel/FMC/POS/PST. Omit texture decoding/rendering only; no scene
 // attributes, transform matrices, source callbacks or collider lookup are mocked.
@@ -86,6 +87,45 @@ test('reset is idempotent and removes session playback from static original prop
   const all = [...props.instances.values()].map(snapshot);
   props.reset(); assert.deepEqual([...props.instances.values()].map(snapshot), all);
   props.update(.5); assert.deepEqual(snapshot(meatbun), initial, 'a stale invalid animation cannot continue after a fresh-state reset');
+});
+
+test('combat traces break placed training boxes and jars, expose one payload and remove the collider', async () => {
+  const game = await map('sn14'), props = game.currentMap.props;
+  game.running = true;
+  game.sceneDamageResolver = () => 100;
+  game.trainingBreakables = new TrainingBreakables(props.instances, { random: () => .99 });
+  const events = [];
+  game.onEvent = event => events.push(event);
+  const crate = game.getSceneObject('D_BBox01'), weapon = game.getSceneObject('D_wpBBox01');
+  const jar = game.getSceneObject('D_RJug01'), poison = game.getSceneObject('D_itRJug0104');
+  assert.equal(weapon.root.visible, false);
+  assert.equal(poison.root.visible, false);
+  for (const container of [crate, jar]) {
+    const collider = container.colliders[0].collider;
+    collider.geometry.computeBoundingBox();
+    const bounds = collider.geometry.boundingBox.clone().applyMatrix4(collider.matrixWorld);
+    const center = bounds.getCenter(v());
+    const root = new THREE.Group();
+    root.position.copy(center).add(v(0,-1.3,-(bounds.max.z-bounds.min.z)*.5-.5));
+    const attacker = { root, attackHits: new Set(), character: { getAttachment: () => ({
+      getWorldPosition: result => result.copy(center).add(v(0,0,.3))
+    }) } };
+    game._resolveSceneContacts(attacker, { poseId:262 }, { index:0, bones:['weapon'] });
+    assert.equal(container.attributes.collision, 0, container.name);
+    assert.equal(container.attributes.interactive, 0);
+  }
+  assert.equal(weapon.root.visible, true);
+  assert.equal(poison.root.visible, true);
+  assert.equal(game.getSceneObject('D_itRJug0101').root.visible, false);
+  assert.equal(events.filter(e => e.type === 'scene-break').length, 2);
+  for (let i=0;i<600&&(crate.playing||jar.playing);i++) { props.update(1/60); game.trainingBreakables.update(); }
+  assert.equal(crate.root.visible, false);
+  assert.equal(jar.root.visible, false);
+  props.reset();
+  game.trainingBreakables = new TrainingBreakables(props.instances);
+  assert.equal(crate.attributes.collision, 1);
+  assert.equal(jar.attributes.collision, 1);
+  assert.equal(weapon.root.visible, false);
 });
 
 test('a real falling platform restores its original FMC frame and collider matrices while retaining fresh-load animation semantics', async () => {

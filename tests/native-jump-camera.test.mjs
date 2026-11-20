@@ -1170,14 +1170,56 @@ test('四向小跳共享原初速度和重力，动画衔接不叠加第二条�
  }
 });
 
-test('musket first attack raises original212, holds first-person aim, blocks translation and lowers for guard',()=>{
+test('musket raises into a shoulder view that keeps the fighter on screen and lowers for guard',()=>{
  const state=fixture();try{const {game,hero}=state;hero.weapon='musket';hero.combat.setWeapon('musket');hero.combat.play(2,{force:true});
   game.action('attack');assert.equal(hero.musketAim,true);assert.equal(hero.combat.timeline.pose.id,212);assert.equal(hero.combat.attacking,false);
   game.action('forward');const start=hero.root.position.clone();for(let i=0;i<70;i++)game._updateFighter(hero,1/60);assert.ok(hero.root.position.distanceTo(start)<1e-6);
-  turnMouseCamera(game,40,-30);game._tickCamera(1/60);assert.equal(hero.root.visible,false);assert.equal(game.aimPitch,.09);assert.ok(game.camera.getWorldDirection(v()).y>0);
+  turnMouseCamera(game,40,-30);game._tickCamera(1/60);
+  assert.equal(hero.root.visible,true);assert.equal(game.aimPitch,.09);assert.ok(game.camera.getWorldDirection(v()).y>0);
+  game.camera.updateMatrixWorld(true);
+  const chest=hero.root.position.clone().add(v(0,1.5,0)).project(game.camera);
+  assert.ok(Math.abs(chest.x)<1&&Math.abs(chest.y)<1&&chest.z<1);
   game.action('forward',false);game.directionBuffer=[];game.action('attack');assert.equal(hero.combat.timeline.pose.id,206);
   game.action('guard');game._updateFighter(hero,1/60);assert.equal(hero.musketAim,false);assert.equal(hero.velocity.length(),0);
  }finally{state.dispose();}
+});
+
+test('a descending lunge cannot miss a raised platform crossed between physics samples', () => {
+  const state = fixture();
+  const { game, hero, colliders } = state;
+  const shelf = new THREE.Mesh(new THREE.BoxGeometry(.5, .2, 4), new THREE.MeshBasicMaterial());
+  shelf.position.y = 1.9;
+  shelf.updateMatrixWorld(true);
+  colliders.push(shelf);
+  try {
+    hero.root.position.set(-1, 2.55, 0);
+    hero.grounded = false;
+    hero.vy = -10;
+    game._move(hero, v(), 0, 1 / 60, v(2, -1.05, 0), true);
+    assert.equal(hero.grounded, true);
+    assert.ok(Math.abs(hero.root.position.y - 2.015) < 1e-6);
+    assert.ok(Math.abs(hero.root.position.x) < .25);
+  } finally {
+    shelf.geometry.dispose(); shelf.material.dispose(); state.dispose();
+  }
+});
+
+test('walking cannot enter the low face of a solid ledge just above the maximum step', () => {
+  const state = fixture();
+  const { game, hero, colliders } = state;
+  const rim = new THREE.Mesh(new THREE.BoxGeometry(1, .6, 4), new THREE.MeshBasicMaterial());
+  rim.position.set(1, .3, 0);
+  rim.updateMatrixWorld(true);
+  colliders.push(rim);
+  try {
+    const start = hero.root.position.clone();
+    game._move(hero, v(), 0, 1 / 60, v(.65, 0, 0), true);
+    assert.equal(hero.root.position.x, start.x);
+    assert.equal(hero.root.position.y, start.y);
+    assert.equal(hero.grounded, true);
+  } finally {
+    rim.geometry.dispose(); rim.material.dispose(); state.dispose();
+  }
 });
 
 

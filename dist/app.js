@@ -22,7 +22,8 @@ import { NATIVE_WEAPON_MENU, QIANKUN_MODE_NAMES } from './native-weapon-menu.js'
 import { DEFAULT_NATIVE_WEAPON_APPEARANCES, NATIVE_WEAPON_APPEARANCES, nativeWeaponAppearance, nativeWeaponAppearanceName, normalizeNativeWeaponAppearances } from './native-weapon-appearances.js';
 import { renderNativeMoveGuide } from './native-move-guide.js';
 import { QIYUN_MAP } from './qiyun-map.js';
-import { TRAINING_ENEMY_COUNT, trainingEnemyCount } from './training-settings.js';
+import { DEFAULT_TRAINING_DIFFICULTY, DEFAULT_TRAINING_MAP, TRAINING_ENEMY_COUNT, trainingEnemyCount } from './training-settings.js';
+import { battleMusic } from './battle-music.js';
 const $ = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 const icon = name => `<svg aria-hidden="true"><use href="#i-${name}"/></svg>`;
@@ -30,11 +31,11 @@ const maps={sifang:{name:'四方阵',english:'THE FOUR SQUARES',poem:'方寸之�
 maps[QIYUN_MAP.id] = QIYUN_MAP;
 for(const mission of NATIVE_MISSIONS)maps[mission.mapId]={name:mission.name,english:'ORIGINAL MISSION · '+mission.id.toUpperCase(),poem:'原版单机任务'};
 const weapons=NATIVE_WEAPON_MENU;
-let prefs={showFps:false,weapon:'sword',map:QIYUN_MAP.id,character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',weaponAppearances:{...DEFAULT_NATIVE_WEAPON_APPEARANCES},mission:'sn01',completedMissions:[],difficulty:'normal',enemyCount:TRAINING_ENEMY_COUNT.defaultValue,infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
+let prefs={showFps:false,weapon:'sword',map:DEFAULT_TRAINING_MAP,character:0,characterAppearance:DEFAULT_CHARACTER_APPEARANCE,characterSelected:false,swordStyle:'butterfly',spearStyle:'original',weaponAppearances:{...DEFAULT_NATIVE_WEAPON_APPEARANCES},mission:'sn01',completedMissions:[],difficulty:DEFAULT_TRAINING_DIFFICULTY,enemyCount:TRAINING_ENEMY_COUNT.defaultValue,infiniteRage:false,muted:true,quality:matchMedia('(pointer:coarse)').matches?'low':'high',best:0};
 let hasSavedWeaponAppearances=false;
-try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');hasSavedWeaponAppearances=!!p.weaponAppearances&&typeof p.weaponAppearances==='object';for(const k of ['showFps','weapon','character','characterAppearance','characterSelected','swordStyle','spearStyle','weaponAppearances','mission','completedMissions','difficulty','enemyCount','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];}catch{}
+try{const p=JSON.parse(localStorage.getItem('meteor-web-original-v2')||'{}');hasSavedWeaponAppearances=!!p.weaponAppearances&&typeof p.weaponAppearances==='object';for(const k of ['showFps','weapon','character','characterAppearance','characterSelected','swordStyle','spearStyle','weaponAppearances','mission','completedMissions','enemyCount','infiniteRage','muted','quality','best'])if(p[k]!==undefined)prefs[k]=p[k];prefs.difficulty=p.trainingDifficulty??DEFAULT_TRAINING_DIFFICULTY;}catch{}
 
-if(typeof prefs.weapon !== 'string' || !Object.hasOwn(weapons,prefs.weapon))prefs.weapon='sword';if(!['normal','hard'].includes(prefs.difficulty))prefs.difficulty='normal';if(!['low','high'].includes(prefs.quality))prefs.quality='high';
+if(typeof prefs.weapon !== 'string' || !Object.hasOwn(weapons,prefs.weapon))prefs.weapon='sword';if(!['normal','hard'].includes(prefs.difficulty))prefs.difficulty=DEFAULT_TRAINING_DIFFICULTY;if(!['low','high'].includes(prefs.quality))prefs.quality='high';
 Object.assign(prefs, savedBattleCharacterSelection(prefs));
 prefs.weaponAppearances=normalizeNativeWeaponAppearances(hasSavedWeaponAppearances?prefs.weaponAppearances:null,{sword:prefs.swordStyle,spear:prefs.spearStyle});
 prefs.swordStyle=prefs.weaponAppearances.sword;prefs.spearStyle=prefs.weaponAppearances.spear;
@@ -49,7 +50,7 @@ if (linkedAppearance !== null) {
   appearanceURL.searchParams.delete('appearance');
   history.replaceState(null, '', appearanceURL.pathname + appearanceURL.search + appearanceURL.hash);
 }
-const save=()=>{prefs.swordStyle=prefs.weaponAppearances.sword;prefs.spearStyle=prefs.weaponAppearances.spear;try{const {map, ...savedPrefs}=prefs; localStorage.setItem('meteor-web-original-v2',JSON.stringify(savedPrefs));}catch{}};
+const save=()=>{prefs.swordStyle=prefs.weaponAppearances.sword;prefs.spearStyle=prefs.weaponAppearances.spear;try{const {map,difficulty,...savedPrefs}=prefs; localStorage.setItem('meteor-web-original-v2',JSON.stringify({...savedPrefs,trainingDifficulty:difficulty}));}catch{}};
 if(!getNativeMission(prefs.mission))prefs.mission='sn01';
 prefs.completedMissions=NATIVE_MISSIONS.filter(m=>Array.isArray(prefs.completedMissions)&&prefs.completedMissions.includes(m.id)).map(m=>m.id);
 let currentMode='training',currentMissionId=prefs.mission,currentLowBandwidth=false;
@@ -100,6 +101,7 @@ function selectMenuWeapon(name) {
 
 function ensureGame() {
   gamePromise ||= import('./engine.js').then(async ({ MeteorGame }) => {
+    if (loadingMatch) updateMatchLoad('正在准备资源清单和战斗数据…', 1);
     const instance = new MeteorGame($('#world'), { onUpdate: updateHUD, onEvent: handleEvent, onEnd: handleEnd, deferWorld: true });
     try {
       await instance.ready;
@@ -161,7 +163,16 @@ function loadWeaponDetails() {
 }
 
 const music=new Audio();music.loop=true;music.volume=.18;music.preload='none';let musicTrack='';
-function syncMusic(){const mapId=({sifang:'sn06',cave:'sn01',forge:'sn10'}[prefs.map]||prefs.map);const mission=currentMode==='story'?getNativeMission(currentMissionId):null;const track=running?(mission?.music||(mapId==='sn01'?'s1.mp3':mapId==='sn10'?'s10.mp3':'s6.mp3')):'menu.mp3';if(musicTrack!==track){musicTrack=track;music.src='./assets/original/sounds/music/'+track;}if(prefs.muted||document.hidden)music.pause();else music.play().catch(()=>{});}
+function syncMusic(){
+  const mission = currentMode === 'story' ? getNativeMission(currentMissionId) : null;
+  const track = running
+    ? battleMusic(game?.currentMap?.id, game?.manifest?.sounds?.music || originalManifest?.sounds?.music, mission?.music)
+    : 'sounds/music/menu.mp3';
+  if (!track) { music.pause(); return; }
+  if (musicTrack !== track) { musicTrack = track; music.src = './assets/original/' + track; }
+  if (prefs.muted || document.hidden) music.pause();
+  else music.play().catch(() => {});
+}
 let priorFocus=null;
 const modal=$('#modal');
 modal.addEventListener('close', () => {
@@ -186,17 +197,31 @@ function nextDialogue(){
   dialogueTimer=setTimeout(nextDialogue,Math.max(2000,Math.min(10000,(Number(line.duration)||4)*1000)));
 }
 function showDialogue(line){dialogueQueue.push(line);if(!dialogueTimer)nextDialogue();}
+let matchLoadStartedAt = null, matchLoadTimer;
+function renderMatchLoadStep() {
+  const progress = $('#load-progress');
+  const step = Math.min(progress.value + 1, progress.max);
+  const elapsed = matchLoadStartedAt === null ? 0 : Math.floor((performance.now() - matchLoadStartedAt) / 1000);
+  $('#load-step').textContent = `第 ${step} / ${progress.max} 步 (加载已耗时 ${elapsed} 秒)`;
+}
 function updateMatchLoad(text, completedSteps) {
   $('#load-status').textContent = text;
-  const progress = $('#load-progress');
-  if (Number.isInteger(completedSteps)) progress.value = completedSteps;
-  $('#load-step').textContent = progress.value === progress.max
-    ? '加载完成'
-    : `第 ${progress.value + 1} / ${progress.max} 步`;
+  $('#load-progress').value = completedSteps;
+  renderMatchLoadStep();
 }
 function matchLoading(active) {
-  loadingMatch = active;
-  $('#load-screen').classList.toggle('hidden', !active);
+  if (active !== loadingMatch) {
+    loadingMatch = active;
+    $('#load-screen').classList.toggle('hidden', !active);
+    if (active) {
+      matchLoadStartedAt = performance.now();
+      renderMatchLoadStep();
+      matchLoadTimer = setInterval(renderMatchLoadStep, 1000);
+    } else {
+      clearInterval(matchLoadTimer);
+      matchLoadStartedAt = null;
+    }
+  }
   for (const button of [$('#start-game'), $('#start-low-bandwidth')]) button.disabled = active || characterSelectionBusy;
 }
 function renderArenaMaps(){
@@ -253,6 +278,38 @@ function chooseWeaponAppearance(weapon, appearance){
   save();
   updateSelection();
 }
+function trainingWeaponsHTML() {
+  const equipped = game?.hero?.weapon;
+  const secondary = game?.weaponItems?.get(game.hero?.weapon2Id);
+  const options = Object.entries(weapons).map(([id, weapon]) =>
+    `<button type="button" class="weapon-option${equipped === id ? ' selected' : ''}" data-training-weapon="${id}" aria-pressed="${equipped === id}"${equipped === id ? ' autofocus' : ''}><span class="weapon-glyph" aria-hidden="true">${weapon.glyph}</span><strong>${weapon.name}</strong></button>`);
+  if (secondary?.available) options.unshift(`<button type="button" class="weapon-option" data-training-secondary="${secondary.itemId}"><small>副兵器</small><strong>${secondary.name}</strong></button>`);
+  return '<h2 id="training-weapons-title">演武换兵器</h2>'
+    + `<div class="weapon-options" role="group" aria-labelledby="training-weapons-title">${options.join('')}</div><p id="training-equip-status" role="status"></p>`;
+}
+async function selectTrainingWeapon(selection) {
+  if (modalKind !== 'training-weapons' || !running || currentMode !== 'training') return;
+  const option = typeof selection === 'number' ? game.weaponItems.get(selection) : weapons[selection];
+  if (!option?.name) return;
+  const status = $('#training-equip-status');
+  const buttons = $$('[data-training-weapon], [data-training-secondary]');
+  const focused = document.activeElement;
+  buttons.forEach(button => { button.disabled = true; });
+  status.textContent = `正在换上${option.name}…`;
+  try {
+    if (!await game.selectTrainingWeapon(selection)) {
+      status.textContent = '兵器读取失败，请重试';
+      return;
+    }
+    if (running && currentMode === 'training') {
+      prefs.weapon = game.hero.weapon; save();
+      if (modalKind === 'training-weapons') closeModal();
+    }
+  } finally {
+    buttons.forEach(button => { button.disabled = false; });
+    if (modalKind === 'training-weapons') focused?.focus?.({ preventScroll: true });
+  }
+}
 function updateSelection(){
   updateEnemyCount();
   $('#infinite-rage').checked=prefs.infiniteRage;
@@ -279,8 +336,8 @@ function updateSelection(){
   const appearanceSelect=$('#character-appearance');if(appearanceSelect){appearanceSelect.value=prefs.characterAppearance;appearanceSelect.disabled=prefs.character!==0||$('#appearance-toggle').disabled;}
 }
 const header=(en,title,desc='')=>`<div class="modal-kicker">${en}</div><h2 class="modal-title">${title}</h2>${desc?`<p class="modal-desc">${desc}</p>`:''}`;
-function guideHTML(){return header('THE WAY OF THE WARRIOR','武学招式','方向接攻击，步法接刀锋。选一柄兵器，查看出招指令。')+`<div class="combo-legend"><p><kbd>A</kbd> 是攻击记号：按 <kbd>${keyHint('attack')}</kbd>。</p><p><span>↑ ↓ ← →</span> 对应 <kbd>${['forward','back','left','right'].map(keyHint).join('；')}</kbd>。连续按顺序输入，重复方向先松开再按。<br>跳跃：<kbd>${keyHint('jump')}</kbd>，点按小跳、按住大跳。空中招式需离地后输入，连段需衔接前一招。火铳先按攻击举枪，举枪完成后再按攻击射击；移动鼠标瞄准，防御或跳跃收枪。<br>爆气：<kbd>${keyHint('burst')}</kbd>，消耗 ${RAGE_BURST.cost} 点怒气，震退近身敌人。命中未格挡的敌人会将其震倒。站立受击时也能释放。</p></div><div class="combo-weapon-filter" role="group" aria-label="查看兵器招式">${Object.keys(weapons).map(weapon=>`<button type="button" data-guide-weapon="${weapon}" aria-pressed="${guideWeapon===weapon}" aria-controls="guide-move-panel"${guideWeapon===weapon?' class="selected"':''}>${weapons[weapon].name}</button>`).join('')}</div><div id="guide-move-panel" aria-labelledby="guide-weapon-heading">${renderNativeMoveGuide(guideWeapon)}</div><details class="guide-controls"><summary>移动、防御与其他操作</summary><div class="controls-grid">${[[['forward','left','back','right'].map(keyHint).join('；'),'移动'],['移动鼠标（进入游戏后锁定）','转动视角'],[keyHint('attack'),'攻击（招式中的 A）'],[keyHint('guard'),'防御'],[keyHint('crouch'),'蹲下'],[keyHint('jump'),'跳跃'],[keyHint('lock'),'解除 / 重新锁定；近战起手自动选取前方对手'],[keyHint('switch'),'切换兵器'],['走近物品','自动拾取'],[keyHint('drop'),'丢弃副兵器'],['Esc','暂停 / 返回对战']].map(([k,v])=>`<div class="control-row"><span>${v}</span><kbd>${k}</kbd></div>`).join('')}</div><p class="modal-note">按住 ${keyHint('crouch')}，快速按两次同一方向（两次之间松开），可向前、后、左、右翻滚。触屏按住「蹲」后也可双击方向。<br>触屏使用方向键和「攻」依次输入，「跃」点按小跳，按住大跳，「爆」为爆气；起跳后可施展空中招式。上方兵器按钮只切换查看内容；实际换兵器请按 ${keyHint('switch')}。</p></details><div class="modal-actions"><button class="primary-button" data-do="${running?'resume':'play'}"><span>${running?'重返对决':'前往演武整装'}</span>${icon('arrow')}</button></div>`;}
-function weaponsHTML(){const w=weapons[prefs.weapon];const moves=nativeCombat?.moves?.[prefs.weapon]||[];return header('THE ARMORY','兵器谱','兵无常势，水无常形。选一柄趁手兵器，再入江湖。')+`<div class="weapon-options">${Object.entries(weapons).map(([key,v])=>`<button class="weapon-option ${key===prefs.weapon?'selected':''}" data-weapon="${key}" aria-pressed="${key===prefs.weapon}"><span class="weapon-glyph">${v.glyph}</span><strong>${v.name}</strong><small>${v.motto}<br>${'原版 · '+v.sourceName}</small></button>`).join('')}</div><p class="modal-desc" id="weapon-description">${w.desc}</p>${moves.length?`<div class="native-moves">${moves.map(move=>`<div><strong>${move.name||'第'+move.id+'式'}</strong><span>${move.frameCount} 帧 · ${move.duration.toFixed(2)} 秒</span></div>`).join('')}</div>`:''}<p class="modal-note">当前随身兵器：${w.name}。演武中按 ${keyHint('switch')} 切换主副兵器；单机任务按 ${keyHint('switch')} 切换原随身兵器。按 ${keyHint('attack')} 连击或投掷。</p><div class="modal-actions"><button class="primary-button" data-do="play"><span>返回战前整装</span>${icon('arrow')}</button></div>`;}
+function guideHTML(){return header('THE WAY OF THE WARRIOR','武学招式','方向接攻击，步法接刀锋。选一柄兵器，查看出招指令。')+`<div class="combo-legend"><p><kbd>A</kbd> 是攻击记号：按 <kbd>${keyHint('attack')}</kbd>。</p><p><span>↑ ↓ ← →</span> 对应 <kbd>${['forward','back','left','right'].map(keyHint).join('；')}</kbd>。连续按顺序输入，重复方向先松开再按。<br>跳跃：<kbd>${keyHint('jump')}</kbd>，点按小跳、按住大跳。空中招式需离地后输入，连段需衔接前一招。火铳普通射击先按攻击举枪，瞄准后再按攻击射击。防御或跳跃收枪，怒气招式可直接输入指令。<br>爆气：<kbd>${keyHint('burst')}</kbd>，消耗 ${RAGE_BURST.cost} 点怒气，震退近身敌人。命中未格挡的敌人会将其震倒。站立受击时也能释放。</p></div><div class="combo-weapon-filter" role="group" aria-label="查看兵器招式">${Object.keys(weapons).map(weapon=>`<button type="button" data-guide-weapon="${weapon}" aria-pressed="${guideWeapon===weapon}" aria-controls="guide-move-panel"${guideWeapon===weapon?' class="selected"':''}>${weapons[weapon].name}</button>`).join('')}</div><div id="guide-move-panel" aria-labelledby="guide-weapon-heading">${renderNativeMoveGuide(guideWeapon)}</div><details class="guide-controls"><summary>移动、防御与其他操作</summary><div class="controls-grid">${[[['forward','left','back','right'].map(keyHint).join('；'),'移动'],['移动鼠标（进入游戏后锁定）','转动视角'],[keyHint('attack'),'攻击（招式中的 A）'],[keyHint('guard'),'防御'],[keyHint('crouch'),'蹲下'],[keyHint('jump'),'跳跃'],[keyHint('lock'),'解除 / 重新锁定；近战起手自动选取前方对手'],[keyHint('switch'),'切换兵器'],['走近物品','自动拾取'],[keyHint('drop'),'丢弃副兵器'],['Esc','暂停 / 返回对战']].map(([k,v])=>`<div class="control-row"><span>${v}</span><kbd>${k}</kbd></div>`).join('')}</div><p class="modal-note">按住 ${keyHint('crouch')}，快速按两次同一方向（两次之间松开），可向前、后、左、右翻滚。触屏按住「蹲」后也可双击方向。<br>触屏使用方向键和「攻」依次输入，「跃」点按小跳，按住大跳，「爆」为爆气；起跳后可施展空中招式。上方兵器按钮只切换查看内容；实际换兵器请按 ${keyHint('switch')}。</p></details><div class="modal-actions"><button class="primary-button" data-do="${running?'resume':'play'}"><span>${running?'重返对决':'前往演武整装'}</span>${icon('arrow')}</button></div>`;}
+function weaponsHTML(){const w=weapons[prefs.weapon];const moves=nativeCombat?.moves?.[prefs.weapon]||[];return header('THE ARMORY','兵器谱','兵无常势，水无常形。选一柄趁手兵器，再入江湖。')+`<div class="weapon-options">${Object.entries(weapons).map(([key,v])=>`<button class="weapon-option ${key===prefs.weapon?'selected':''}" data-weapon="${key}" aria-pressed="${key===prefs.weapon}"><span class="weapon-glyph">${v.glyph}</span><strong>${v.name}</strong><small>${v.motto}<br>${'原版 · '+v.sourceName}</small></button>`).join('')}</div><p class="modal-desc" id="weapon-description">${w.desc}</p>${moves.length?`<div class="native-moves">${moves.map(move=>`<div><strong>${move.name||'第'+move.id+'式'}</strong><span>${move.frameCount} 帧 · ${move.duration.toFixed(2)} 秒</span></div>`).join('')}</div>`:''}<p class="modal-note">当前随身兵器：${w.name}。演武中按 ${keyHint('switch')} 打开兵器列表；单机任务按 ${keyHint('switch')} 切换原随身兵器。按 ${keyHint('attack')} 连击或投掷。</p><div class="modal-actions"><button class="primary-button" data-do="play"><span>返回战前整装</span>${icon('arrow')}</button></div>`;}
 
 function resourcesHTML(){return header('THE METEOR ARCHIVE','流星典藏','优先读取本地客户端的原始素材，流星资源网提供格式资料与缺失资源补充。')+`<div class="resource-list"><a class="resource-link" href="./assets/original/manifest.json" target="_blank" rel="noopener noreferrer"><span>本</span><div><strong>本地客户端原素材</strong><small>20 位人物 · 22 份地图 · 原始招式与配乐</small></div><span>↗</span></a><a class="resource-link" href="https://www.lxres.com/" target="_blank" rel="noopener noreferrer"><span>源</span><div><strong>流星资源网</strong><small>原版客户端 · 单机任务 · 人物兵器 · 地图资源</small></div><span>↗</span></a><a class="resource-link" href="https://www.lxres.com/LiuXingBiJi/1566.html" target="_blank" rel="noopener noreferrer"><span>图</span><div><strong>地图 GMC 结构笔记</strong><small>原生地图格式的 Web 解析依据</small></div><span>↗</span></a><a class="resource-link" href="./assets/SOURCES.md" target="_blank" rel="noopener noreferrer"><span>记</span><div><strong>本项目素材来源清单</strong><small>已使用的地图、贴图与转换记录</small></div><span>↗</span></a></div><p class="modal-note">这是《流星蝴蝶剑.net》的非官方 Web 实验重构。读取本地原版模型、骨骼、动画与招式表，在浏览器运行；剧情脚本与联网协议仍在逐项移植。原游戏与社区素材的权利归各自权利人所有。</p>`;}
 function guestbookHTML(){return header('MESSAGES FROM THE JIANGHU','江湖留言','留下你的只言片语，来去皆可匿名。')+`<form id="guestbook-form" class="guestbook-form"><label for="guestbook-message">写给江湖</label><textarea id="guestbook-message" name="message" maxlength="300" rows="3" required placeholder="最多 300 字，文明交流"></textarea><div class="guestbook-form-footer"><small>留言经管理员审核后公开显示为「匿名侠客」。提交时服务器会记录 IP 用于防刷，30 天后自动删除。</small><button class="primary-button" type="submit">落笔留言 →</button></div><p id="guestbook-status" class="guestbook-status" role="status" aria-live="polite"></p></form><section class="guestbook-list" aria-label="近期江湖留言"><h3>近来留言 <span id="guestbook-count"></span></h3><div id="guestbook-messages" aria-live="polite"><p class="modal-note">正在听取江湖消息…</p></div></section>`;}
@@ -459,7 +516,7 @@ function showLobbyPage(page){
 function openModal(kind){
   disposeKeySettings?.();disposeKeySettings=null;
   if(kind==='guide')guideWeapon=weapons[game?.hero?.weapon]?game.hero.weapon:prefs.weapon;
-  const renderers={guide:guideHTML,weapons:weaponsHTML,characters:charactersHTML,mission:missionHTML,maps:mapsHTML,network:()=>header('JIANGHU / MULTIPLAYER','江湖会武','同一游戏服务中的房间会出现在这里。')+'<div id="network-lobby"></div>',resources:resourcesHTML,settings:settingsHTML,guestbook:guestbookHTML,keys:()=>header('SETTINGS / CONTROLS','自定义按键','保存键位后生效；关闭返回设置。')+'<div id="key-settings"></div>',pause:pauseHTML};
+  const renderers={guide:guideHTML,weapons:weaponsHTML,'training-weapons':trainingWeaponsHTML,characters:charactersHTML,mission:missionHTML,maps:mapsHTML,network:()=>header('JIANGHU / MULTIPLAYER','江湖会武','同一游戏服务中的房间会出现在这里。')+'<div id="network-lobby"></div>',resources:resourcesHTML,settings:settingsHTML,guestbook:guestbookHTML,keys:()=>header('SETTINGS / CONTROLS','自定义按键','保存键位后生效；关闭返回设置。')+'<div id="key-settings"></div>',pause:pauseHTML};
   if(!running&&!ended&&pageKinds.has(kind)){
     showLobbyPage(kind);$('#page-content').innerHTML='<button class="game-back" data-route="home" aria-label="返回游戏大厅">← 返回大厅</button>'+(renderers[kind]||guideHTML)();
     if(kind==='network')networkLobby.mount($('#network-lobby'));
@@ -473,6 +530,10 @@ function openModal(kind){
   if(kind==='network')networkLobby.mount($('#network-lobby'));
   if(kind==='keys')disposeKeySettings=mountKeySettings($('#key-settings'),{bindings:keyBindings,storage:keyStorage,onSave:next=>{keyBindings=next;game?.setKeyBindings(next);refreshKeyGuide();}});
   if(!modal.open)modal.showModal();
+  if (kind === 'training-weapons') {
+    modal.setAttribute('aria-labelledby', 'training-weapons-title');
+    ($('[data-training-weapon][autofocus]') || $('[data-training-weapon]'))?.focus({ preventScroll: true });
+  }
   if (kind === 'characters') checkAppearanceOptions();
   if (kind === 'maps' && !originalManifest) loadMapList().catch(error => console.warn(error));
   if (kind === 'weapons' && !nativeCombat) loadWeaponDetails();
@@ -480,7 +541,7 @@ function openModal(kind){
 function closeModal(){
   const previous=modalKind;disposeKeySettings?.();disposeKeySettings=null;if(modal.open)modal.close();modalKind='';
   if(ended){returnLobby();return;}
-  if(running&&paused&&previous!=='pause'){openModal('pause');return;}
+  if(running&&paused&&previous!=='pause'&&previous!=='training-weapons'){openModal('pause');return;}
   if(running&&paused){paused=false;game?.pause(false);}
   priorFocus?.focus?.();if(running&&!paused&&!matchMedia('(pointer:coarse)').matches)game?.requestMouseLock();
 }
@@ -500,7 +561,7 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
   if (canLock && navigator.userActivation?.isActive) game?.requestMouseLock();
   if (modal.open) modal.close();
   $('#load-title').textContent = `正在准备「${mapName}」`;
-  updateMatchLoad('正在准备游戏引擎和动作数据…', 0);
+  updateMatchLoad('正在启动游戏引擎…', 0);
   matchLoading(true);
   releaseMenuSnapshots();
   const canvas = $('#world');
@@ -523,12 +584,12 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
     document.body.classList.add('playing');
     $('#hud-map').textContent = mapName + (currentMode === 'network' ? ' · 联机对战' : mission ? ' · 单机任务' : ' · 演武');
     $('#battle-hint-text').textContent = '原版招式演武 · 按 ' + keyHint('attack') + ' 出招';
-    updateMatchLoad(`正在载入${mapName}与人物动作…`, 1);
-    await instance.start({ map, weapon, difficulty: prefs.difficulty, ...selection, mode: currentMode,
+    updateMatchLoad(`正在载入${mapName}与出战人物…`, 2);
+    await instance.start({ map, weapon, difficulty: currentMode === 'training' ? prefs.difficulty : undefined, ...selection, mode: currentMode,
       lowBandwidth: currentLowBandwidth, enemyCount: prefs.enemyCount });
     if (!isCurrent()) return;
     window.gameAnalytics?.send('match_entered', {mode:currentMode});
-    updateMatchLoad('战场已就绪', 4);
+    updateMatchLoad('正在启用战斗界面和操作…', 7);
     instance.menuIdle = false;
     instance.setMuted(prefs.muted);
     instance.setQuality(prefs.quality);
@@ -537,6 +598,7 @@ async function startMatch(mode = 'training', missionId = currentMissionId, isCur
     canvas.setAttribute('tabindex', '-1');
     canvas.focus();
     if (canLock && document.pointerLockElement !== canvas) $('#battle-hint-text').textContent = '点击战场锁定鼠标 · 按 ' + keyHint('attack') + ' 出招';
+    updateMatchLoad('战场已就绪', $('#load-progress').max);
   } catch (error) {
     if (!isCurrent()) return;
     window.gameAnalytics?.send('load_failed', {mode:currentMode,kind:'match'});
@@ -588,7 +650,7 @@ function updateHUD(s){if(!running)return;
   drawMinimap(s);
 }
 function drawMinimap(s){const c=$('#minimap'),ctx=c.getContext('2d'),w=c.width;ctx.clearRect(0,0,w,w);ctx.save();ctx.translate(w/2,w/2);ctx.strokeStyle='#a6916050';ctx.lineWidth=1;ctx.strokeRect(-49,-49,98,98);ctx.beginPath();ctx.moveTo(-65,0);ctx.lineTo(65,0);ctx.moveTo(0,-65);ctx.lineTo(0,65);ctx.stroke();ctx.font='8px sans-serif';ctx.fillStyle='#d9bf8d';ctx.textAlign='center';ctx.fillText('北',0,-61);const bounds=s.mapBounds;const scale=bounds?110/Math.max(bounds.maxX-bounds.minX,bounds.maxZ-bounds.minZ,1):2.2;const cx=bounds?(bounds.minX+bounds.maxX)/2:0,cz=bounds?(bounds.minZ+bounds.maxZ)/2:0;for(const e of [...(s.enemies||[]).map(e=>({...e,ally:false})),...(s.allies||[]).map(e=>({...e,ally:true}))]){ctx.fillStyle=e.ally?'#83bdb3':'#ce6650';ctx.beginPath();ctx.arc(Math.max(-57,Math.min(57,(e.x-cx)*scale)),Math.max(-57,Math.min(57,(e.z-cz)*scale)),3,0,Math.PI*2);ctx.fill();}const objective=s.mission?.objective?.position;if(objective){const x=Math.max(-57,Math.min(57,(objective.x-cx)*scale)),z=Math.max(-57,Math.min(57,(objective.z-cz)*scale));ctx.strokeStyle='#f0cc78';ctx.lineWidth=2;ctx.strokeRect(x-4,z-4,8,8);}if(s.position){ctx.fillStyle='#e4d8a9';const x=Math.max(-57,Math.min(57,(s.position.x-cx)*scale)),z=Math.max(-57,Math.min(57,(s.position.z-cz)*scale));ctx.beginPath();ctx.moveTo(x,z-5);ctx.lineTo(x-4,z+4);ctx.lineTo(x+4,z+4);ctx.closePath();ctx.fill();}ctx.restore();}
-function handleEvent(e){if(e.type==='pointer-unlock'){if(running&&!paused&&!loadingMatch)openModal('pause');return;}if(e.type==='pointer-error'){toast(e.text);return;}if(e.type==='load'){if(loadingMatch)updateMatchLoad(e.text,e.completedSteps);return;}if(!running)return;if(e.type==='dialogue'){showDialogue(e);return;}if(e.type==='move'){const feedback=$('#combo-feedback');feedback.textContent=e.text||'';feedback.classList.add('named-move');feedback.dataset.command=e.command||'';return;}if(['mission-diagnostic','mission-compatibility'].includes(e.type)){console.warn(e.text,e);return;}if(e.type==='hit'){
+function handleEvent(e){if(e.type==='training-weapon-picker'){if(running&&!paused&&!loadingMatch&&currentMode==='training')openModal('training-weapons');return;}if(e.type==='pointer-unlock'){if(running&&!paused&&!loadingMatch)openModal('pause');return;}if(e.type==='pointer-error'){toast(e.text);return;}if(e.type==='load'){if(loadingMatch&&Number.isInteger(e.completedSteps))updateMatchLoad(e.text,e.completedSteps);return;}if(!running)return;if(e.type==='dialogue'){showDialogue(e);return;}if(e.type==='move'){const feedback=$('#combo-feedback');feedback.textContent=e.text||'';feedback.classList.add('named-move');feedback.dataset.command=e.command||'';return;}if(['mission-diagnostic','mission-compatibility'].includes(e.type)){console.warn(e.text,e);return;}if(e.type==='hit'){
   // Incoming damage has its HP/HUD response; this displays the player's blow.
   if(!e.attackerHero)return;
   clearTimeout(hitTimer);const feedback=$('#hit-feedback');
@@ -620,6 +682,8 @@ document.addEventListener('click',e=>{
   const guideChoice=e.target.closest('[data-guide-weapon]');if(guideChoice&&(modalKind==='guide'||!running&&lobbyPage==='guide')&&weapons[guideChoice.dataset.guideWeapon]){guideWeapon=guideChoice.dataset.guideWeapon;$$('[data-guide-weapon]').forEach(button=>{const selected=button.dataset.guideWeapon===guideWeapon;button.classList.toggle('selected',selected);button.setAttribute('aria-pressed',String(selected));});$('#guide-move-panel').innerHTML=renderNativeMoveGuide(guideWeapon);return;}
   const map=e.target.closest('[data-map]');if(map&&!running){selectMap(map.dataset.map);return;}
   const weaponAppearance=e.target.closest('[data-weapon-appearance]');if(weaponAppearance){chooseWeaponAppearance(prefs.weapon,weaponAppearance.dataset.weaponAppearance);return;}
+  const trainingSecondary=e.target.closest('[data-training-secondary]');if(trainingSecondary){selectTrainingWeapon(Number(trainingSecondary.dataset.trainingSecondary));return;}
+  const trainingWeapon=e.target.closest('[data-training-weapon]');if(trainingWeapon){selectTrainingWeapon(trainingWeapon.dataset.trainingWeapon);return;}
   const weapon=e.target.closest('[data-weapon]');if(weapon){selectMenuWeapon(weapon.dataset.weapon);if(modal.open&&modalKind==='weapons')openModal('weapons');return;}
   const character=e.target.closest('[data-pick-character], [data-pick-appearance]');if(character){const appearance=character.dataset.pickAppearance||'original',id=character.dataset.pickCharacter===undefined?0:Number(character.dataset.pickCharacter);selectCharacter(id,appearance);return;}
   const nav=e.target.closest('[data-panel]');if(nav){if(nav.dataset.panel==='home'){if(modal.open)closeModal();}else openModal(nav.dataset.panel);return;}

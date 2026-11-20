@@ -41,12 +41,23 @@ test('火铳命中回调重入不重复发射，非法参数后仍可重试',()=
   assert.deepEqual(system.firePose({...args,direction:v()}),[]);
   assert.equal(system.firePose(args).length,1);assert.equal(hits,1);system.dispose();
 });
-test('火铳瞄准相机和射线从同一原高度出发，不依赖未加载的武器模型',()=>{
+test('火铳肩后准星对准实际射线撞点，射击仍可在武器模型加载前计算',()=>{
   const f=owner(),game=Object.create(MeteorGame.prototype),camera=new T.PerspectiveCamera();
   f.hero=true;f.musketAim=true;f.root.position.set(4,3,7);
-  let fired;Object.assign(game,{hero:f,running:true,currentMap:{},camera,cameraTarget:v(),cameraAngle:.7,aimPitch:.2,
-    muskets:{firePose(args){fired=args;return [];}},_soundDefinition(){}});
-  game._fireNativeMusket(f,{poseId:206,serial:1,attacks:[{index:0}]});game._tickCamera(1/60);
-  assert.deepEqual(fired.position.toArray(),[4,5.4,7]);assert.deepEqual(camera.position.toArray(),fired.position.toArray());
-  assert.ok(camera.getWorldDirection(v()).distanceTo(fired.direction)<1e-9);
+  const colliders=[], muskets=new NativeMusketSystem({getColliders:()=>colliders});
+  let fired; muskets.firePose = args => { fired=args; return []; };
+  Object.assign(game,{hero:f,running:true,currentMap:{colliders},raycaster:new T.Raycaster(),camera,cameraTarget:v(),cameraAngle:.7,aimPitch:.2,
+    muskets,_soundDefinition(){}});
+  game._fireNativeMusket(f,{poseId:206,serial:1,attacks:[{index:0}]});
+  const wall=new T.Mesh(new T.PlaneGeometry(10,10),new T.MeshBasicMaterial({side:T.DoubleSide}));
+  wall.position.copy(fired.position).addScaledVector(fired.direction,7);
+  wall.lookAt(fired.position);wall.updateMatrixWorld(true);colliders.push(wall);
+  try{
+    game._tickCamera(1/60);camera.updateMatrixWorld(true);
+    assert.deepEqual(fired.position.toArray(),[4,5.4,7]);
+    assert.ok(camera.position.distanceTo(fired.position)>4);
+    assert.equal(f.root.visible,true);
+    const dot=wall.position.clone().project(camera);
+    assert.ok(Math.hypot(dot.x,dot.y)<1e-8);
+  }finally{wall.geometry.dispose();wall.material.dispose();muskets.dispose();}
 });

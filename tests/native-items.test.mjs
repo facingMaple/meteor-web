@@ -88,7 +88,7 @@ test('world buff duplicate refreshes without stacking and source poison buns act
   const poison=fixture([item('poison','Item0103')]);assert.equal(poison.system.tryPickup(hero).itemId,18);updateNativeScriptItems(hero,5.2);assert.equal(hero.hp,990);
 });
 test('unsupported effects stay unconsumed and full HP buns do not block a nearby usable buff',()=>{
-  for(const id of [6,9,32,33,39])assert.equal(nativeWorldItemEffect(itemRecords.get(id)),null);
+  for(const id of [6,32,33,39])assert.equal(nativeWorldItemEffect(itemRecords.get(id)),null);
   const {system,instances}=fixture([item('bun','Item01'),item('buff','Item03')]),hero=actor(1500);instances[1].root.position.x=1;
   assert.equal(system.tryPickup(hero).itemId,3);assert.equal(instances[0].attributes.active,1);
   const changed=structuredClone(itemRecords.get(3));changed.effects[0].words[6]=999;assert.equal(nativeWorldItemEffect(changed),null);

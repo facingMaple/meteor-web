@@ -158,8 +158,12 @@ function createSkinVisual(skin,path,{enhanced=false,loadTextures=true}={}){
     // opaque; alpha blending would sort overlapping eyes, hair and face badly.
     const alphaTest=Number.isFinite(s.alphaTest)?clamp(s.alphaTest,0,1):(s.alpha ? .35 : 0);
     const transparent=typeof s.transparent==='boolean'?s.transparent:opacity<.99;
+    const depthWrite=s.depthWrite??true;
     const Material=enhanced&&(s.hairSurface||s.skinSurface)?THREE.MeshPhysicalMaterial:THREE.MeshStandardMaterial;
-    const material=new Material({name:s.name??'',color:enhanced?(s.color??0xffffff):0xffffff,roughness:enhanced?(s.roughness??.78):.85,metalness:enhanced?(s.metalness??0):0,side:s.twoSide?THREE.DoubleSide:THREE.FrontSide,transparent,opacity,alphaTest,depthWrite:s.depthWrite??true});
+    // On an antialiased canvas, partial pixel coverage smooths the edge of
+    // a cutout as it moves while keeping its opaque depth/sorting behavior.
+    const alphaToCoverage=enhanced&&alphaTest>0&&!transparent&&depthWrite;
+    const material=new Material({name:s.name??'',color:enhanced?(s.color??0xffffff):0xffffff,roughness:enhanced?(s.roughness??.78):.85,metalness:enhanced?(s.metalness??0):0,side:s.twoSide?THREE.DoubleSide:THREE.FrontSide,transparent,opacity,alphaTest,depthWrite,alphaToCoverage});
     if(enhanced)configureSourceMaterial(material,s);
     return material;
   });
@@ -242,6 +246,16 @@ export function createNativeCharacter(data,options={}){
     return {x:THREE.MathUtils.lerp(v.getFloat32(o,true),v.getFloat32(p,true),t),y:THREE.MathUtils.lerp(v.getFloat32(o+4,true),v.getFloat32(p+4,true),t),z:THREE.MathUtils.lerp(v.getFloat32(o+8,true),v.getFloat32(p+8,true),t)};
   };
   function readQ(v,o,q){q.set(v.getFloat32(o+4,true),v.getFloat32(o+8,true),v.getFloat32(o+12,true),v.getFloat32(o,true)).normalize();}
+  function syncPosePresentation(pose) {
+    syncDisplayRig();
+    for (const listener of poseListeners) listener(pose);
+    syncVisualAttachments();
+  }
+  function refreshRenderPose() {
+    group.updateMatrixWorld(true);
+    skeleton.update();
+    syncPosePresentation({source:api.source,frame:api.frame});
+  }
   function setPoseFrame(source,frame,frameOptions={}){
     if(!frameOptions.managed)animationState.external=true;
     const a=data.animations[Number(source)];if(!a||a.boneCount!==boneNodes.length||a.dummyCount!==dummyNodes.length)throw new Error('Animation does not match native skeleton');
@@ -263,7 +277,7 @@ export function createNativeCharacter(data,options={}){
       readQ(v,x+12,qa);readQ(v,y+12,qb);dummyNodes[i].quaternion.copy(qa).slerp(qb,t);
     }
     group.updateMatrixWorld(true);skeleton.update();api.source=Number(source);api.frame=f;
-    syncDisplayRig();for(const listener of poseListeners)listener({source:api.source,frame:f});syncVisualAttachments();return api;
+    syncPosePresentation({source:api.source,frame:f});return api;
   }
   const transformNodes=[...boneNodes,...dummyNodes],blendMatrix=new THREE.Matrix4(),nativeInverse=new THREE.Matrix4();
   let blendCache=null,poseSnapshotSerial=0;
@@ -305,7 +319,7 @@ export function createNativeCharacter(data,options={}){
       node.updateMatrixWorld(true);
     }
     group.updateMatrixWorld(true);skeleton.update();api.source=Number(to.source);api.frame=to.frame;
-    syncDisplayRig();for(const listener of poseListeners)listener({source:api.source,frame:api.frame,blend:{from,to,weight:alpha}});syncVisualAttachments();return api;
+    syncPosePresentation({source:api.source,frame:api.frame,blend:{from,to,weight:alpha}});return api;
   }
   function playPose(poseId,{loop,rate=1,restart=false}={}){
     const pose=data.poses[typeof poseId==='string'&&!/^\d+$/.test(poseId)?NATIVE_POSES[poseId]:Number(poseId)];if(!pose)return false;
@@ -374,6 +388,7 @@ export function createNativeCharacter(data,options={}){
     return {...appearanceState};
   }
   const api={nativeCharacterId:data.id,group,get mesh(){return mesh;},skeleton,bones:boneNodes,dummies:dummyNodes,nativeSpace,poses:data.poses,combatPoses:data.combatPoses,animations:data.animations,source:1,frame:1,onPoseUpdate(listener){poseListeners.add(listener);return()=>poseListeners.delete(listener);},update,updateSecondaryMotion,resetSecondaryMotion,setSecondaryMotionEnabled,get secondaryMotionStatus(){return visuals.get(appearance)?.secondaryMotion?.status||{available:false,enabled:false};},getSecondaryMotionSnapshot(){return visuals.get(appearance)?.secondaryMotion?.snapshot()||[];},playPose,setPoseFrame,setPoseBlend,capturePose,sampleRoot,sampleSceneMotion,setAppearance,get appearance(){return appearance;},get appearanceStatus(){return {...appearanceState};},getAttachment:name=>byName.get(name)||resolve(name),getVisualAttachmentMatrix,registerVisualAttachment,setSourceRestPose(value){const visual=visuals.get(appearance),rig=visual?.proportionalRig;if(!rig)return false;rig.setRestPose(value);visual.secondaryMotion?.setEnabled(!value&&secondaryMotionEnabled);syncVisualAttachments();return true;},get sourceRestAvailable(){return !!visuals.get(appearance)?.proportionalRig;},get sourceRestPose(){return visuals.get(appearance)?.proportionalRig?.restPose||false;},get finished(){return animationState.finished;},get currentPose(){return animationState.pose?.id??null;},getAttachmentPosition(name,target=new THREE.Vector3()){return resolve(name)?.getWorldPosition(target)||null;},dispose(){if(disposed)return;disposed=true;++appearanceRequest;blendCache=null;poseListeners.clear();for(const visual of visuals.values())visual.dispose();visuals.clear();visualAttachments.clear();visualSockets.clear();skeleton.dispose();group.removeFromParent();}};
+  api.refreshRenderPose = refreshRenderPose;
   api.ready=originalVisual.ready.then(async()=>{if(options.appearance&&options.appearance!=='original'&&appearanceRequest===0)await setAppearance(options.appearance);});
   playPose(0,{loop:true});return api;
 }

@@ -2,6 +2,7 @@ import * as THREE from './vendor/three.module.js';
 import { loadNativeEffectManifest, createEffectTransforms, setEffectTime, effectNodeMatrix, snapshotEffectAnchors } from './native-effect-transforms.js';
 import { NativeWeaponTrails } from './native-weapon-trails.js';
 import { WeaponSkillAccents } from './weapon-skill-accents.js';
+import { WEAPON_COLLECTION_APPEARANCES } from './weapon-collection-catalog.js';
 export { sampleEffectKeys } from './native-effect-transforms.js';
 
 // Original PonEF keys/textures drive presentation only. No visual shape becomes
@@ -87,9 +88,20 @@ export async function loadNativeRageVfx(scene) {
   } catch (error) { for (const texture of textures.values()) texture.dispose(); throw error; }
 }
 
+function bladeLightSockets(authored) {
+  const sockets = { ...authored };
+  for (const { modelIds: [id] } of WEAPON_COLLECTION_APPEARANCES.blade) {
+    const base = id.replace(/^collection-(festive-)?/, '');
+    const grip = authored?.[base]?.d_wpnrs;
+    // These skins share the right-hand mount. The blade tips vary by mesh.
+    if (grip && !sockets[id]?.d_wpnrs) sockets[id] = { ...sockets[id], d_wpnrs: grip };
+  }
+  return sockets;
+}
+
 export class NativeRageVfx {
   constructor({ scene, manifest, textures = new Map() }) {
-    this.scene = scene; this.manifest = manifest; this.textures = textures;
+    this.scene = scene; this.manifest = { ...manifest, weaponAttachments: bladeLightSockets(manifest.weaponAttachments) }; this.textures = textures;
     this.active = []; this.actors = new Map(); this.deathCasts=new WeakMap();this.disposed = false;
     this.time = 0; this.trails = new NativeWeaponTrails(scene, manifest); this.accents = new WeaponSkillAccents(scene);
     this.group = new THREE.Group(); this.group.name = '原版怒气技能特效'; scene.add(this.group);
@@ -165,7 +177,12 @@ export class NativeRageVfx {
     }
     let effect = current;
     if (!effect || effect.serial !== state.serial || effect.id !== id) {
-      if (effect) this._retire(effect, at - (state.consumed || 0));
+      if (effect) {
+        // The Character-bound flash in pos311 first lights up during pos312.
+        const followsSpin = effect.id === 'pos311' && id === 'pos312' &&
+          effect.serial + 1 === state.serial && effect.castPoseId === context?.poseId;
+        this._retire(effect, at - (state.consumed || 0), followsSpin ? state.serial : null);
+      }
       effect = this._create(actor, state, id);
     }
     // 005663e0 advances the EF clock in seconds, independently of POS speed.
@@ -206,10 +223,11 @@ export class NativeRageVfx {
     }
     this.active.push(effect); this.actors.set(actor, effect); return effect;
   }
-  _retire(effect, at = this.time) {
+  _retire(effect, at = this.time, followSerial = null) {
     effect.live = false; effect.tail = Math.max(RAGE_VFX_ADAPTER.tail, effect.visualEnd - effect.time);
     effect.updatedAt = at;
-    effect.frozenAnchors = effect.anchorSnapshot || snapshotEffectAnchors(effect);
+    if (followSerial == null) effect.frozenAnchors = effect.anchorSnapshot || snapshotEffectAnchors(effect);
+    else effect.following = { serial: followSerial, timeAtLink: effect.time };
     if (this.actors.get(effect.actor) === effect) this.actors.delete(effect.actor);
   }
   _texture(reference, time) {
@@ -223,7 +241,14 @@ export class NativeRageVfx {
     this.time += step; this.trails.update(step); this.accents.update(step);
     for (const effect of [...this.active]) {
       if (effect.actor.dead&&!effect.persistAfterDeath || effect.actor.disposed || effect.actor.scriptRemoved || effect.live && effect.actor.combat?.reacting) { this._remove(effect); continue; }
-      if (!effect.live) {
+      if (effect.following) {
+        const spin = this.actors.get(effect.actor);
+        if (spin?.serial !== effect.following.serial || effect.actor.combat?.reacting || effect.actor.networkReactionPhase) {
+          this._remove(effect); continue;
+        }
+        effect.time = effect.following.timeAtLink + spin.time;
+        if (effect.time > effect.visualEnd) { this._remove(effect); continue; }
+      } else if (!effect.live) {
         const elapsed = Math.max(0, this.time - effect.updatedAt); effect.updatedAt = this.time;
         effect.time += elapsed; effect.tail -= elapsed;
         if (effect.tail <= 0) { this._remove(effect); continue; }

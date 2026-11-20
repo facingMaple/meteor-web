@@ -8,6 +8,7 @@ import { brotliCompressSync, gzipSync, gunzipSync } from 'node:zlib';
 import { unpackNativeAnimation } from '../dist/native-animation-pack.js';
 import { createNetworkServer } from '../network-server.mjs';
 import { MeteorGame } from '../dist/engine.js';
+import { battleMusic } from '../dist/battle-music.js';
 import * as THREE from '../dist/vendor/three.module.js';
 
 const root = new URL('../dist/', import.meta.url);
@@ -135,10 +136,18 @@ test('cold lightweight training loads its selected map and original cast through
     assert.equal(new Set(game.enemies.map(actor => actor.modelId)).size, 6);
     assert.ok(game.enemies.every(actor => actor.modelId !== game.hero.modelId && actor.character.appearance === 'original'));
     assert.equal(game.running, true);
-    assert.deepEqual(completedSteps, [2, 3]);
+    assert.deepEqual(completedSteps, [3, 4, 5, 6]);
     assert.equal([...paths].some(path => path.includes('/sn06/') || path.startsWith('assets/enhanced/')), false);
     assert.ok(paths.has('assets/original/characters/common/character.v1.ambpack.gz'));
     assert.equal(paths.has('assets/original/characters/common/character.amb'), false);
+    await game.start({ characterAppearance: 'original', lowBandwidth: true, enemyCount: 1 });
+    assert.equal(game.currentMap.id, 'sn06');
+    assert.equal(game.difficulty, 'hard');
+    const tracks = game.manifest.sounds.music;
+    assert.equal(battleMusic(game.currentMap.id, tracks), 'sounds/music/s6.mp3');
+    assert.equal(battleMusic('sn08', tracks), 'sounds/music/s2.mp3');
+    assert.equal(battleMusic('sn10', tracks), 'sounds/music/s10.mp3');
+    assert.ok(game.manifest.maps.filter(map => map.available).every(map => tracks.some(track => track.url === battleMusic(map.id, tracks))));
   } finally {
     for (const actor of [game.hero, ...game.enemies]) actor?.character.dispose();
     game.rageVfx?.dispose();

@@ -650,6 +650,37 @@ export class MeteorGame {
     }
     this.raycaster.far=Infinity;return false;
   }
+  _slideAgainstWorld(position,dx,dz){
+    const blockedX=this._horizontalBlocked(position,dx,0);
+    if(!blockedX)position.x+=dx;
+    const blockedZ=this._horizontalBlocked(position,0,dz);
+    if(!blockedZ)position.z+=dz;
+    return {blockedX,blockedZ};
+  }
+  _predictGroundMovement(position,control,pose,scale,dt){
+    const direction=this._moveDirection(control);
+    if(!direction.lengthSq())return;
+    const speed=(nativeStrideSpeed(0,pose)||this.hostPhysics.speed)*scale;
+    const next=position.clone();
+    this._slideAgainstWorld(next,direction.x*speed*dt,direction.z*speed*dt);
+    const support=this._footSupport(next,this.hostPhysics.step,.8);
+    if(support){next.y=support.point.y+FLOOR_CLEARANCE;position.copy(next);}
+  }
+  _stepAirControl(velocity,vertical,control,angle,dt,scale,groundContact,blocked=false){
+    const forward=blocked?0:Number(control.keys.has('forward'))-Number(control.keys.has('back'));
+    const right=blocked?0:Number(control.keys.has('right'))-Number(control.keys.has('left'));
+    const forwardRunning=forward>0&&!control.keys.has('crouch');
+    const side=forwardRunning?Math.fround(.2):1;
+    const x=Math.sin(angle)*forward-Math.cos(angle)*right*side;
+    const z=Math.cos(angle)*forward+Math.sin(angle)*right*side;
+    return stepNativeAirMotion(velocity,vertical,x,z,forwardRunning,dt,scale,this.hostPhysics.gravity,groundContact);
+  }
+  _predictAirMovement(position,velocity,control,scale,dt){
+    velocity.y=this._stepAirControl(velocity,velocity.y,control,control.facing??control.cameraAngle+Math.PI,dt,scale,false);
+    const {blockedX,blockedZ}=this._slideAgainstWorld(position,velocity.x*dt,velocity.z*dt);
+    if(blockedX)velocity.x=0;
+    if(blockedZ)velocity.z=0;
+  }
   _move(f, direction, speed, dt, motion = null, actionMotion=f.combat.busy) {
     if(f.combat.reacting)f.wallKick=null;
     const drifting=!f.grounded&&!actionMotion&&!f.wallRun;
@@ -658,14 +689,9 @@ export class MeteorGame {
     if(actionMotion)f.velocity.set(0,0,0);
     else if(drifting){
       const control=this._controlFor(f),a=f.root.rotation.y;
-      let inputX=direction.x,inputZ=direction.z,forwardRunning=direction.x*Math.sin(a)+direction.z*Math.cos(a)>0;
-      if(control){
-        const forward=f.scriptInputBlocked?0:Number(control.keys.has('forward'))-Number(control.keys.has('back'));
-        const right=f.scriptInputBlocked?0:Number(control.keys.has('right'))-Number(control.keys.has('left'));
-        forwardRunning=forward>0&&!control.keys.has('crouch');const side=forwardRunning?Math.fround(.2):1;
-        inputX=Math.sin(a)*forward-Math.cos(a)*right*side;inputZ=Math.cos(a)*forward+Math.sin(a)*right*side;
-      }
-      f.vy=stepNativeAirMotion(f.velocity,f.vy,inputX,inputZ,forwardRunning,dt,nativeAirMovementScale(f),this.hostPhysics.gravity,f.nativeAirGroundContact===true);
+      const scale=nativeAirMovementScale(f),groundContact=f.nativeAirGroundContact===true;
+      f.vy=control?this._stepAirControl(f.velocity,f.vy,control,a,dt,scale,groundContact,f.scriptInputBlocked)
+        :stepNativeAirMotion(f.velocity,f.vy,direction.x,direction.z,direction.x*Math.sin(a)+direction.z*Math.cos(a)>0,dt,scale,this.hostPhysics.gravity,groundContact);
       f.nativeAirGroundContact=false;
     }
     else{const desired=f.wallRun?f.wallRun.velocity:direction.clone().multiplyScalar(speed);if(this._controlFor(f))f.velocity.copy(desired);else f.velocity.lerp(desired,1-Math.exp(-dt*14));}
@@ -676,8 +702,9 @@ export class MeteorGame {
       dx+=momentum.x*dt;dz+=momentum.z*dt;
     }else f.actionMomentum=null;
     const from = p.clone();
-    if (!this._horizontalBlocked(p, dx, 0)) p.x += dx;else{if(momentum)momentum.x=0;if(drifting)f.velocity.x=0;}
-    if (!this._horizontalBlocked(p, 0, dz)) p.z += dz;else{if(momentum)momentum.z=0;if(drifting)f.velocity.z=0;}
+    const {blockedX,blockedZ}=this._slideAgainstWorld(p,dx,dz);
+    if(blockedX){if(momentum)momentum.x=0;if(drifting)f.velocity.x=0;}
+    if(blockedZ){if(momentum)momentum.z=0;if(drifting)f.velocity.z=0;}
     const ground = f.grounded && this._footSupport(p, this.hostPhysics.step, .8);
     // Native 004ce850 overrides vertical velocity when the authored d_base
     // velocity has |trunc(native units/sec)|>=float0.1; otherwise gravity
@@ -733,6 +760,18 @@ export class MeteorGame {
     const x = Number(control.keys.has('right')) - Number(control.keys.has('left')), z = Number(control.keys.has('forward')) - Number(control.keys.has('back')), a = control.cameraAngle;
     return v3(Math.cos(a) * x - Math.sin(a) * z, 0, -Math.sin(a) * x - Math.cos(a) * z).normalize();
   }
+  _groundPose(f,control,moving){
+    const facingMove=control&&(control.lookLocked||control.mouseLook?.locked||control.locked&&!control.locked.dead&&!control.locked.disposed);
+    const requested=nativeTraversalDirection(control?.keys);
+    const groundMove=facingMove?(NATIVE_GROUND_MOVE_POSES[requested]??(f.heldPose>=141&&f.heldPose<=143?f.heldPose:NATIVE_LOCOMOTION.run)):NATIVE_LOCOMOTION.run;
+    let pose=f.musketAim?212:f.guard?NATIVE_WEAPONS[f.weapon].guard:moving?groundMove:f.combat.stance??NATIVE_WEAPONS[f.weapon].stance;
+    if((f.scriptCrouched||f.npcCombat?.crouch||control?.keys.has('crouch'))&&f.grounded&&!f.musketAim&&!f.guard){
+      const movingPose=NATIVE_CROUCH_POSES[requested]??(f.heldPose>=145&&f.heldPose<=148?f.heldPose:NATIVE_CROUCH_POSES.forward);
+      pose=moving?movingPose:NATIVE_CROUCH_POSES.idle;
+    }
+    if(!moving&&!f.guard&&!f.musketAim&&f.standingTurn)pose=f.standingTurn.poseId;
+    return pose;
+  }
   _face(f, target, dt = 1) {
     const desired = Math.atan2(target.x - f.root.position.x, target.z - f.root.position.z), current = f.root.rotation.y;
     f.root.rotation.y += Math.atan2(Math.sin(desired - current), Math.cos(desired - current)) * Math.min(1, dt * 12);
@@ -760,7 +799,10 @@ export class MeteorGame {
     this.enemies = this.enemies.filter(f => f !== actor); if (this.locked === actor) this.locked = null;
   }
   hasScriptLineOfSight(actor, target) {
-    const from = actor.root.position.clone().add(v3(0, 1.35, 0)), ray = target.root.position.clone().add(v3(0, 1.35, 0)).sub(from), distance = ray.length();
+    return this._lineOfSightPositions(actor.root.position,target.root.position);
+  }
+  _lineOfSightPositions(origin,destination){
+    const from = origin.clone().add(v3(0, 1.35, 0)), ray = destination.clone().add(v3(0, 1.35, 0)).sub(from), distance = ray.length();
     if (distance < .5) return true;
     this.raycaster.set(from, ray.normalize()); this.raycaster.far = Math.max(0, distance - .35);
     const blocked = this.raycaster.intersectObjects(this._collisionCandidates(from.x, from.z, distance), false).some(hit => hit.distance > .25);
@@ -1389,14 +1431,17 @@ export class MeteorGame {
     else if (/^pose:\d+$/.test(name)) this.hero.combat.play(Number(name.slice(5)));
 
   }
+  _selectPlayerAttack(f,control,savedInput){
+    return selectNativeMove(NATIVE_MOVE_CATALOG, { weapon: f.weapon, weaponMode: f.combat.weaponMode, includeOtherModes: true, air: !f.grounded, buffer: savedInput?.buffer ?? control.directionBuffer,
+      held: (savedInput?.held ?? [...control.keys]).map(key => ({ forward: 'up', back: 'down', left: 'left', right: 'right' }[key])).filter(Boolean),
+      time: savedInput?.time ?? control.inputTime ?? this.elapsed, poseId: f.combat.timeline?.pose.id, movePoseId: f.combat.currentMove?.poseId, busy: f.combat.busy });
+  }
   _beginAttack(f, savedInput = null) {
     const control=this._controlFor(f);
     // 004cff30 accepts actor states0/1/3/6, excluding wall state2.
     if (f.dead || f.disposed || f.scriptRemoved || f.scriptCrouched || f.wallRun || f.combat.reacting || f.combat.actionLocked || control && f.scriptInputBlocked) return false;
     if(usesPlayerLook(control))applyPlayerLook(f,control);
-    const move = control ? selectNativeMove(NATIVE_MOVE_CATALOG, { weapon: f.weapon, weaponMode: f.combat.weaponMode, includeOtherModes: true, air: !f.grounded, buffer: savedInput?.buffer ?? control.directionBuffer,
-      held: (savedInput?.held ?? [...control.keys]).map(key => ({ forward: 'up', back: 'down', left: 'left', right: 'right' }[key])).filter(Boolean),
-      time: savedInput?.time ?? control?.inputTime ?? this.elapsed, poseId: f.combat.timeline?.pose.id, movePoseId: f.combat.currentMove?.poseId, busy: f.combat.busy }) : savedInput?.npcMove ?? null;
+    const move = control ? this._selectPlayerAttack(f,control,savedInput) : savedInput?.npcMove ?? null;
     // Ordinary shots use the raise/aim state. Rage commands can start from
     // the normal battle camera and show the complete skill animation.
     if (control && f.weapon === 'musket' && !(move?.rage >= 60)) {
@@ -1421,6 +1466,7 @@ export class MeteorGame {
     if (target && (!f.combat.busy || f.combat.currentMove?.kind==='dash') && !savedInput?.npcMove) this._face(f, target.root.position);
     const outgoingSelfCast=f.combat.busy&&f.combat.timeline?.canCancel&&!f.combat.poseBlend
       ?{pose:f.combat.timeline.pose,source:f.combat.timeline.pose.source,frame:f.combat.timeline.frame,serial:f.combat.serial,context:f.combat.currentMove,effectTime:f.combat._effectElapsed}:null;
+    const viewDelay=control?.attackViewDelay;
     const accepted = f.combat.attack({ air: !f.grounded, poseId: move?.poseId ?? null, context: move,
       // Input posture is checked when the command is accepted. An ACT-legal
       // queued continuation stays attached to that active predecessor if it
@@ -1433,6 +1479,7 @@ export class MeteorGame {
         // Queued ACT transitions start later than the click: use the target's
         // current position at the actual start, rather than a captured position.
         if(control&&!f.musketAim){const current=this._attackTarget(f,control);if(current)this._face(f,current.root.position);}
+        if(f.weapon==='sword'&&f.grounded&&!command?.rage&&viewDelay>0)this.networkMeleeHistory?.begin(f,f.combat.serial+1,viewDelay);
         if (!command) return;
         if (f.weapon === 'musket' && command.rage >= 60) f.musketAim = false;
         if(command.switchesWeapon)this._switchWeaponForMove(f);
@@ -1571,17 +1618,7 @@ export class MeteorGame {
         else if([152,154,156,158,180].includes(pose))f.combat.timeline.loop=pose===NATIVE_LOCOMOTION.fall;
         f.heldPose=pose;
       }else{
-        const moving=direction.lengthSq()>0;
-        const facingMove=control&&(control.lookLocked||control.mouseLook?.locked||control.locked&&!control.locked.dead&&!control.locked.disposed);
-        const groundMove=facingMove?(NATIVE_GROUND_MOVE_POSES[nativeTraversalDirection(control.keys)]??(f.heldPose>=141&&f.heldPose<=143?f.heldPose:NATIVE_LOCOMOTION.run)):NATIVE_LOCOMOTION.run;
-        let pose=f.musketAim?212:f.guard?NATIVE_WEAPONS[f.weapon].guard:moving?groundMove:f.combat.stance??NATIVE_WEAPONS[f.weapon].stance;
-        const crouching=(f.scriptCrouched||f.npcCombat?.crouch||control&&control.keys.has('crouch'))&&f.grounded&&!f.musketAim&&!f.guard;
-        if(crouching){
-          const walking=direction.lengthSq()>0,requested=nativeTraversalDirection(control?.keys);
-          const movingPose=NATIVE_CROUCH_POSES[requested]??(f.heldPose>=145&&f.heldPose<=148?f.heldPose:NATIVE_CROUCH_POSES.forward);
-          pose=walking?movingPose:NATIVE_CROUCH_POSES.idle;
-        }
-        if(!moving&&!f.guard&&!f.musketAim&&f.standingTurn)pose=f.standingTurn.poseId;
+        const pose=this._groundPose(f,control,direction.lengthSq()>0);
         if(f.heldPose!==pose){f.combat.play(pose,{loop:true,force:true});if(f.musketAim&&pose===212){f.combat.timeline.frame=f.combat.timeline.pose.end;f.combat.timeline.finished=true;}f.heldPose=pose;}
       }
     }
@@ -1701,8 +1738,14 @@ export class MeteorGame {
         if (spinHitFrames
           ? state.frame - (spinHitFrames.get(target) ?? -Infinity) < BLADE_SPIN_REHIT_FRAMES - 1e-6
           : attacker.attackHits.has(key)) continue;
-        const center = target.root.position.clone().add(v3(0, 1.35, 0));
+        const historic=group.points.length&&this.networkMeleeHistory?.positionAtStrike(attacker,target,state.serial,this.matchElapsed);
+        const center = (historic||target.root.position).clone().add(v3(0, 1.35, 0));
         let contact = group.points.find(p => Math.hypot(p.x - center.x, p.z - center.z) < .9 && Math.abs(p.y - center.y) < 1.45), extra = {};
+        if(contact&&historic){
+          const origin=attacker.root.position;
+          if(this._lineOfSightPositions(origin,historic)&&this.hasScriptLineOfSight(attacker,target))contact=contact.clone().add(target.root.position).sub(historic);
+          else contact=null;
+        }
         if (!contact) {
           const effect = this.effectContacts?.contact(group.volumes, target);
           if (effect) { const { point, ...info } = effect; contact = point; extra = info; }

@@ -1,0 +1,19 @@
+# Merge these locations into the existing HTTPS server block.
+# Run one persistent Node instance: HOST=127.0.0.1 PORT=4173 node server.mjs
+# Trailing / strips /lx/ before passing requests to the Node server.
+location ^~ /lx/api/ {
+    proxy_pass http://127.0.0.1:4173/api/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header Connection "";
+    proxy_buffering off;
+    proxy_cache off;
+    proxy_read_timeout 75s;
+}
+location /lx/ {
+    proxy_pass http://127.0.0.1:4173/;
+    proxy_http_version 1.1;
+    proxy_set_header Host $http_host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+}

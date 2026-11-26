@@ -30,3 +30,18 @@ test('同一服务器时刻只保留最新快照，减少推送与轮询交错�
   buffer.receive(frame(2,.03));buffer.receive(frame(3,.03));buffer.receive(frame(4,.03));
   assert.equal(buffer.frames.length,1);buffer.update(.1);assert.deepEqual(seen,[1,4]);
 });
+
+test('连续的到达抖动增加插值缓冲，网络平稳后回落且时钟不倒退',()=>{
+  const buffer=new NetworkFrameBuffer(()=>{},{delay:.055});
+  let now=0,last=0,peak=0;
+  for(let i=0;i<150;i++){
+    const gap=i<60?(i%2?.065:.002):1/30;
+    now+=gap;
+    if(i)buffer.update(gap);
+    buffer.receive(frame(i+1,i/30),now);
+    assert.ok(buffer.clock>=last||i===0);
+    peak=Math.max(peak,buffer.targetDelay);last=buffer.clock;
+  }
+  assert.ok(peak>.073&&peak<=.13);
+  assert.equal(buffer.targetDelay,.055);
+});

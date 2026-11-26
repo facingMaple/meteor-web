@@ -63,16 +63,48 @@ test('HTTP integration shares authoritative frame between two independent room i
   const server=createNetworkServer();await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));const base=`http://127.0.0.1:${server.address().port}`;
   const post=async(path,data={},credential)=>{const response=await fetch(base+path,{method:'POST',headers:{'Content-Type':'application/json',...(credential?{Authorization:'Bearer '+credential}:{})},body:JSON.stringify(data)});return {status:response.status,body:await response.json()};};
   try{const a=(await post('/api/rooms/create',{name:'房主'})).body,b=(await post('/api/rooms/join',{code:a.room.code,name:'加入者',selection:{character:1,characterAppearance:'original'}})).body;
-    assert.deepEqual(b.room.players.map(player=>player.selection), [{character:0,characterAppearance:'liuchao-mint'},{character:1,characterAppearance:'original'}]);
+    assert.deepEqual(b.room.players.map(({selection:{character,characterAppearance}})=>({character,characterAppearance})), [{character:0,characterAppearance:'liuchao-mint'},{character:1,characterAppearance:'original'}]);
     const cmd=(p,op,data={})=>post(`/api/rooms/${a.room.code}/${op}`,{round:1,...data},p.token);
     await cmd(a,'ready',{ready:true});await cmd(b,'ready',{ready:true});await cmd(a,'start');await cmd(a,'loaded');await cmd(b,'loaded');
-    await cmd(b,'sync',{input:[{action:'forward',active:true,angle:0,sequence:1}]});const host=await cmd(a,'sync',{frame:frame(a,b)}),guest=await cmd(b,'sync');
-    assert.equal(host.body.input[0].action,'forward');assert.equal(guest.body.frame.players.length,2);assert.equal((await cmd(b,'sync',{frame:frame(a,b,2)})).status,403);
+    await cmd(b,'sync',{input:[{action:'jump',active:false,angle:0,sequence:1}]});
+    const host=await cmd(a,'sync',{frame:frame(a,b)});
+    assert.equal(host.body.input[0].action,'jump');
+    const confirmed=frame(a,b,2);
+    Object.assign(confirmed.players[1],{inputAck:1,actionBusy:false});
+    assert.equal((await cmd(a,'sync',{inputAck:{[b.playerId]:1},frame:confirmed})).status,200);
+    const guest=await cmd(b,'sync');
+    assert.deepEqual(guest.body.frame,confirmed);
+    assert.equal((await cmd(b,'sync',{frame:frame(a,b,3)})).status,403);
     const cross=await fetch(base+'/api/rooms/create',{method:'POST',headers:{Origin:'http://evil.invalid'},body:'{}'});assert.equal(cross.status,403);
   }finally{await new Promise(resolve=>server.close(resolve));}
 });
 
 function playing(){const f=room();f.call(f.a,'ready',{ready:true});f.call(f.b,'ready',{ready:true});f.call(f.a,'start');f.call(f.a,'loaded');f.call(f.b,'loaded');return f;}
+
+test('联机输入只允许攻击按下携带已发布的视图时间',()=>{
+  const {a,b,call}=playing();
+  const attack={action:'attack',active:true,angle:0,sequence:1,viewTime:.9};
+  assert.throws(()=>call(b,'sync',{input:[attack]}),/视图时间/);
+  call(a,'sync',{frame:frame(a,b)});
+  for(const patch of [{viewTime:1.1},{viewTime:null},{viewTime:-1},{action:'forward'},{active:false}]){
+    assert.throws(()=>call(b,'sync',{input:[{...attack,...patch}]}),/视图时间/);
+  }
+  assert.equal(call(b,'sync',{input:[attack]}).acceptedSequence,1);
+  assert.equal(call(a,'sync').input[0].viewTime,.9);
+});
+
+test('并行上传丢弃迟到的旧快照，但仍处理合法的输入确认',()=>{
+  const {a,b,call,rooms}=playing();
+  call(b,'sync',{input:[{action:'attack',active:true,sequence:1,angle:0,time:0}]});
+  assert.equal(call(a,'sync').input.length,1);
+  call(a,'sync',{fastSync:1,frame:frame(a,b,2)});
+  const obsolete=frame(a,b);
+  assert.throws(()=>call(a,'sync',{frame:obsolete}),/战斗状态/);
+  assert.throws(()=>call(b,'sync',{fastSync:1,frame:obsolete}),/房主/);
+  call(a,'sync',{fastSync:1,frame:obsolete,inputAck:{[b.playerId]:1}});
+  assert.equal(call(b,'sync').frame.sequence,2);
+  assert.equal(rooms.rooms.get(a.room.code).players[1].input.length,0);
+});
 
 test('受击倒地起身阶段随权威快照传递，无效阶段原子拒绝且兼容旧快照',()=>{
  const {a,b,call}=playing();let sequence=0;

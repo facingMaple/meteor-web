@@ -7,7 +7,7 @@ function fixture(){
   const rooms=new NetworkRooms(),host=rooms.create('房主'),guest=rooms.join(host.room.code,'剑客');
   const request=(p,op,data={})=>rooms.request(host.room.code,p.token,op,{round:rooms.rooms.get(host.room.code)?.round||0,...data});
   request(host,'ready',{ready:true});request(guest,'ready',{ready:true});request(host,'start');request(host,'loaded');request(guest,'loaded');
-  const client=new NetworkClient();Object.assign(client,{room:request(guest,'sync').room,code:host.room.code,playerId:guest.playerId});
+  const client=new NetworkClient({pipelined:false});Object.assign(client,{room:request(guest,'sync').room,code:host.room.code,playerId:guest.playerId});
   client.api=async(path,data)=>request(guest,path.split('/').at(-1),data);
   return {client,request,host,guest,rooms};
 }
@@ -83,7 +83,7 @@ test('large bursts drain in ordered batches without dropping attacks or held-key
 });
 
 function hostClient(f,onInput=()=>{}){
-  const client=new NetworkClient({onInput});Object.assign(client,{room:f.client.room,code:f.client.code,playerId:f.host.playerId});
+  const client=new NetworkClient({onInput,pipelined:false});Object.assign(client,{room:f.client.room,code:f.client.code,playerId:f.host.playerId});
   client.api=async(path,data)=>f.request(f.host,path.split('/').at(-1),data);return client;
 }
 test('host response loss and acknowledgement response loss never drop or replay applied operations',async()=>{
@@ -104,6 +104,60 @@ test('host retries an acknowledgement which never reached the server without app
   let fail=true;host.api=async(path,data)=>{if(fail){fail=false;throw Error('确认未送达');}return api(path,data);};
   await host.sync();await host.sync();await host.sync();assert.equal(applied.filter(x=>x.action==='attack').length,1);
   assert.equal(f.rooms.rooms.get(f.client.code).players[1].input.length,0);
+});
+test('并行上传允许新的按键绕过旧的慢响应，并按序送达移动和攻击且只执行一次',async()=>{
+  const f=fixture(),{client,request}=f,applied=[];
+  client.enablePipelining=true;
+  const pending=[],host=hostClient(f,batch=>applied.push(...batch));host.enablePipelining=true;
+  client.api=(_path,data)=>new Promise((resolve,reject)=>pending.push({data,resolve,reject}));
+  const old=client.sync();
+  client.send('forward');client.send('attack');client.send('forward',false);
+  const latest=client.sync();
+  assert.equal(pending.length,2);
+  assert.deepEqual(pending[1].data.input.map(input=>input.action),['look','forward','attack','forward']);
+  pending[1].resolve(request(f.guest,'sync',pending[1].data));await latest;
+  await host.sync();await host.sync();
+  assert.deepEqual(applied.filter(input=>input.action!=='look').map(({action,active})=>[action,active]),[['forward',true],['attack',true],['forward',false]]);
+  assert.equal(client.queue.length,0);
+  pending[0].reject(Error('已过时的响应丢失'));await old;
+  assert.equal(client.failures,0);assert.equal(f.rooms.rooms.get(client.code).players[1].input.length,0);
+});
+
+test('并行上传最多六个在途请求，新回合不接受旧回合的响应',async()=>{
+  const {client}=fixture(),original=client.room,pending=[];
+  client.enablePipelining=true;
+  client.api=()=>new Promise(resolve=>pending.push(resolve));
+  const requests=Array.from({length:12},()=>client.sync());
+  assert.equal(pending.length,6);
+  client.setRoom({...original,round:original.round+1});
+  for(const resolve of pending)resolve({room:original,acceptedSequence:1});
+  await Promise.all(requests);
+  assert.equal(client.room.round,original.round+1);assert.equal(client.upload.inFlight,0);
+});
+
+test('重复的房间元数据只更新缓存，不逐帧重刷大厅或重算成员',()=>{
+  const {client}=fixture();const state=client.room;let updates=0;
+  client.onRoom=()=>updates++;
+  assert.equal(client.setRoom({...state,scores:[{id:'x',kills:2}]}),true);
+  assert.equal(client.room.scores[0].kills,2);assert.equal(updates,0);
+  assert.equal(client.setRoom({...state,revision:state.revision+1,players:state.players.slice(0,1)}),true);
+  assert.equal(updates,1);
+});
+
+test('短时断网退避重试并保留未确认按键，同时超时不会立即踢出房间',async()=>{
+  const f=fixture(),{client}=f,api=client.api;
+  let now=0,calls=0,offline=true;
+  client.enablePipelining=true;client.now=()=>now;
+  client.api=async(...args)=>{calls++;if(offline)throw Error('暂时断线');return api(...args);};
+  client.send('forward');client.send('attack');client.send('forward',false);
+  await client.sync();assert.equal(calls,1);
+  await client.sync();assert.equal(calls,1);
+  for(const seconds of [.5,1,1.5,2.5]){now=seconds;await client.sync();assert.equal(client.closed,false);}
+  assert.equal(client.queue.length,3);
+  offline=false;now=3.5;await client.sync();
+  assert.equal(client.failures,0);assert.equal(client.queue.length,0);
+  assert.deepEqual(f.request(f.host,'sync').input.map(({action,active})=>[action,active]),[['forward',true],['attack',true],['forward',false]]);
+  offline=true;now=4;await client.sync();now=17;await client.sync();assert.equal(client.closed,true);
 });
 test('host-local menu clear does not accumulate unsent guest operations',()=>{
   const host=hostClient(fixture());for(let i=0;i<300;i++)host.send('clear',false);

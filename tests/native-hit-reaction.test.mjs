@@ -335,14 +335,103 @@ test('reliable transport applies the real remote sword attack once despite lost 
   const request=(player,op,data={})=>rooms.request(a.room.code,player.token,op,{round:1,...data});
   request(a,'ready',{ready:true});request(b,'ready',{ready:true});request(a,'start');request(a,'loaded');request(b,'loaded');
   hero.networkId=a.playerId;target.networkId=b.playerId;await game._equip(target,'sword');target.root.rotation.y=Math.PI;
-  let session,attackCalls=0;const host=new NetworkClient({onInput:batch=>{attackCalls+=batch.filter(x=>x.action==='attack').length;session.inputs(batch);},getFrame:()=>session.snapshot()}),guest=new NetworkClient();
+  let session,attackCalls=0,now=1;const host=new NetworkClient({now:()=>now,onInput:batch=>{attackCalls+=batch.filter(x=>x.action==='attack').length;session.inputs(batch);},getFrame:()=>session.snapshot()}),guest=new NetworkClient({now:()=>now});
   for(const [client,player] of [[host,a],[guest,b]]){Object.assign(client,{room:request(player,'sync').room,code:a.room.code,playerId:player.playerId});client.api=async(path,data)=>request(player,'sync',data);}
   session=new NetworkGame(game,host,host.room);session.play();const api=host.api;let calls=0;
   host.api=async(path,data)=>{calls++;if(calls===3)throw Error('确认未送达');const result=await api(path,data);if(calls===1)throw Error('投递响应丢失');return result;};
   try{
-    guest.send('attack');await guest.sync();await host.sync();assert.equal(attackCalls,0);await host.sync();assert.equal(attackCalls,1);
+    guest.send('attack');await guest.sync();await host.sync();assert.equal(attackCalls,0);now+=.2;await host.sync();assert.equal(attackCalls,1);
     for(let i=0;i<90;i++)tick(game);const hp=hero.hp;assert.ok(hp<hero.maxHp,'delivered remote input must really damage the host');
-    await host.sync();await host.sync();await host.sync();assert.equal(attackCalls,1);assert.equal(hero.hp,hp);assert.equal(rooms.rooms.get(a.room.code).players[1].input.length,0);
+    await host.sync();now+=.2;await host.sync();await host.sync();assert.equal(attackCalls,1);assert.equal(hero.hp,hp);assert.equal(rooms.rooms.get(a.room.code).players[1].input.length,0);
+  }finally{session.dispose();}
+});
+
+test('客人追砍移动目标：区分本地起手、房主起手和权威命中窗口',async t=>{
+  async function chase({latency,compensated,blocked=false}){
+    const host=await fixture(),guest=await fixture();
+    const {game,hero:runner,target:attacker}=host;
+    runner.networkId='runner';attacker.networkId='chaser';
+    guest.hero.networkId='chaser';guest.target.networkId='runner';
+    await game._equip(attacker,'sword');
+    if(blocked)game._lineOfSightPositions=()=>false;
+    game._placeFighter(attacker,{position:v(0,.03,0)});
+    game._placeFighter(runner,{position:v(0,.03,1.1)});
+    const room={players:[{id:'runner'},{id:'chaser'}]},frames=[];
+    const authority=new NetworkGame(game,{host:true,playerId:'runner',send(){}},room);
+    let clock=0,pending=[],serial=0;
+    const replica=new NetworkGame(guest.game,{host:false,playerId:'chaser',streamActive:true,now:()=>clock,send(action,active,viewTime){
+      pending.push({playerId:'chaser',action,active,time:clock,viewTime:compensated?viewTime:undefined,sequence:++serial,angle:Math.PI,arrival:clock+latency});
+      return serial;
+    }},room);
+    authority.play();replica.play();
+    const strikes=[],contacts=[],clicks=[];
+    const resolve=game._resolveContacts.bind(game);
+    game._resolveContacts=(actor,state,volumes)=>{
+      if(actor===attacker&&!strikes.some(strike=>strike.serial===state.serial))strikes.push({serial:state.serial,at:clock});
+      const hp=runner.hp;resolve(actor,state,volumes);
+      if(runner.hp<hp)contacts.push(clock);
+    };
+    try{
+      for(let index=0;index<180;index++){
+        clock=index/60;
+        // Two identical chase passes. The target keeps running during each
+        // slash, moving out of present-time reach during the delayed pass.
+        const phase=clock%1.5;
+        if(index%90===0){game._placeFighter(attacker,{position:v(0,.03,0)});game._placeFighter(runner,{position:v(0,.03,1.1)});}
+        runner.root.position.z=1.1+Math.max(0,phase-.415)*nativeStrideSpeed(0,144);
+        if(index%2===0)frames.push({arrival:clock+latency,frame:authority.snapshot()});
+        while(frames[0]?.arrival<=clock+1e-9)replica.receive(frames.shift().frame);
+        if(index%90===30){
+          guest.game.action('attack');
+          clicks.push({at:clock,pose:replica.localMovement?.attack?.pose.id??null});
+        }
+        while(pending[0]?.arrival<=clock+1e-9){
+          const input=pending.shift();authority.inputs([input]);
+          if(input.action==='attack')clicks.at(-1).host=clock;
+        }
+        game._stepWorld(1/60);guest.game._updatePresentation(1/60);
+        if(index%90===30){
+          const click=clicks.at(-1),pose=data.poses.get(click.pose),frame=guest.hero.character.frame;
+          if(pose&&frame>=pose.start&&frame<=pose.end)click.local=clock;
+        }
+      }
+      return {clicks,strikes,contacts};
+    }finally{replica.dispose();authority.dispose();}
+  }
+  const low=await chase({latency:0,compensated:false});
+  const high=await chase({latency:.083,compensated:false});
+  const fixed=await chase({latency:.083,compensated:true});
+  const blocked=await chase({latency:.083,compensated:true,blocked:true});
+  t.diagnostic(JSON.stringify({low,high,fixed}));
+  assert.equal(low.contacts.length,2);
+  assert.ok(high.clicks.every(click=>click.local===click.at&&click.host-click.at>=.08));
+  assert.equal(high.contacts.length,0);
+  assert.equal(fixed.contacts.length,2);
+  assert.equal(blocked.contacts.length,0);
+});
+
+test('高延迟连续出刀保留三段剑招，每段只结算一次并使用自己的回查记录',async()=>{
+  const {game,hero:runner,target:attacker}=await fixture();
+  runner.networkId='runner';attacker.networkId='chaser';await game._equip(attacker,'sword');
+  game._placeFighter(attacker,{position:v(0,.03,0)});game._placeFighter(runner,{position:v(0,.03,1.1)});
+  const session=new NetworkGame(game,{host:true,playerId:'runner',send(){}},{players:[{id:'runner'},{id:'chaser'}]});session.play();
+  const hits=[],apply=game._applyNativeHit.bind(game);
+  game._applyNativeHit=(source,target,state,attack,point,extra)=>{
+    const hp=target.hp,accepted=apply(source,target,state,attack,point,extra);
+    if(source===attacker&&target.hp<hp){
+      const swing=game.networkMeleeHistory.swings.get(source);
+      hits.push({pose:state.poseId,serial:state.serial,swung:swing?.serial,delay:swing?.delay});
+    }
+    return accepted;
+  };
+  try{
+    for(let i=0;i<240&&hits.length<3;i++){
+      if(i>=30&&(i-30)%6===0)session.inputs([{playerId:'chaser',action:'attack',active:true,angle:Math.PI,sequence:i,time:(i-5)/60,viewTime:(i-13)/60}]);
+      game._stepWorld(1/60);
+    }
+    assert.deepEqual(hits.map(hit=>hit.pose),[262,263,264]);
+    assert.ok(hits.every(hit=>hit.serial===hit.swung&&hit.delay>.21&&hit.delay<.22));
+    assert.equal(runner.contacts,3);
   }finally{session.dispose();}
 });
 

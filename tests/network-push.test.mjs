@@ -32,15 +32,16 @@ test('推送确认不吞掉响应丢失后的重试批次，补发与推送不�
   const f=await fixture();try{
     const api=f.guest.api;let lost=true;f.guest.api=async(...args)=>{const r=await api(...args);if(lost){lost=false;throw Error('丢失POST响应');}return r;};
     f.guest.send('attack');await until(()=>f.applied.some(x=>x.action==='attack')&&f.guest.failures===1);
-    assert.ok(f.guest.pendingInput,'只能由POST完整批次确认清理重试数据');
-    await f.guest.sync();assert.equal(f.guest.pendingInput,null);await f.host.sync();
+    assert.ok(f.guest.queue.some(input=>input.action==='attack'),'只能由POST完整批次确认清理重试数据');
+    await until(()=>f.guest.now()>=f.guest.upload.retryAt);
+    await f.guest.sync();assert.equal(f.guest.queue.length,0);await f.host.sync();
     assert.equal(f.applied.filter(x=>x.action==='attack').length,1);
   }finally{await f.close();}
 });
 test('推送断线回退到原确认链路，重连后继续推送且不回放已执行攻击',async()=>{
   const f=await fixture();try{
     f.host.streamer.controller.abort();await until(()=>!f.host.streamActive);
-    f.guest.send('jump');await until(()=>!f.guest.pendingInput&&f.guest.sequence>0);await f.host.sync();assert.equal(f.applied.filter(x=>x.action==='jump').length,1);
+    f.guest.send('jump');await until(()=>!f.guest.queue.length&&f.guest.sequence>0);await f.host.sync();assert.equal(f.applied.filter(x=>x.action==='jump').length,1);
     await until(()=>f.host.streamActive);f.guest.send('attack');await until(()=>f.applied.some(x=>x.action==='attack'));
     assert.equal(f.applied.filter(x=>x.action==='jump').length,1);
   }finally{await f.close();}

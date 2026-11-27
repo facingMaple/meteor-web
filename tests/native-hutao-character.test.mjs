@@ -34,7 +34,7 @@ const withFetch = async callback => { const before = globalThis.fetch; globalThi
 const matrices = character => [...character.bones, ...character.dummies].map(node => node.matrixWorld.toArray());
 
 test('appearance registry keeps HuTao and drops the retired HD appearance', () => {
-  assert.deepEqual(Object.keys(NATIVE_APPEARANCES), ['liuchao-mint', 'original', 'liuchao', 'liuchao-wedding', 'hutao', 'doubao', 'springfield', 'ganyu', 'yaemiko', 'shogun', 'lumine', 'aether', 'furina', 'keqing', 'ningguang']);
+  assert.deepEqual(Object.keys(NATIVE_APPEARANCES), ['liuchao-mint', 'original', 'liuchao', 'liuchao-wedding', 'liuchao-yuzuha', 'liuchao-body-trial', 'hutao', 'doubao', 'springfield', 'ganyu', 'yaemiko', 'shogun', 'lumine', 'aether', 'furina', 'keqing', 'ningguang']);
   assert.equal(NATIVE_APPEARANCES.hutao.characterId, 0);
   assert.equal(NATIVE_APPEARANCES.hd, undefined);
   assert.equal(Object.isFrozen(NATIVE_APPEARANCES), true); assert.equal(Object.isFrozen(NATIVE_APPEARANCES.hutao), true);

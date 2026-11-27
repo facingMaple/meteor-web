@@ -72,7 +72,7 @@ def prepare_white_bottom():
     Image.fromarray(pixels).save(textures / 'vesna-white-bottom.webp', quality=94, method=6)
 
 
-def retain_body(base, *, with_lining=False, keep_original_jewelry=True):
+def retain_body(base, *, with_lining=False, with_bottom_lining=False, keep_original_jewelry=True):
     base_parts = json.loads(PARTS.read_text())['objects']
     skin = {**base, **{field: [] for field in ARRAYS}, 'faces': []}
     parts = []
@@ -93,7 +93,7 @@ def retain_body(base, *, with_lining=False, keep_original_jewelry=True):
                 skin[field].extend(base[field][vertex_start * width:vertex_end * width])
             for face in base['faces'][face_start:face_end]:
                 material = face['material']
-                if not with_lining and part['name'].startswith('身体') and base['materials'][material]['name'] == '珍珠白 · 泳装织物':
+                if not (with_lining or with_bottom_lining) and part['name'].startswith('身体') and base['materials'][material]['name'] == '珍珠白 · 泳装织物':
                     material = skin_slot
                 skin['faces'].append({'material': material,
                                       'indices': [i + offset for i in face['indices']]})
@@ -368,7 +368,7 @@ def build(*, web_only=False):
         author_blend(bpy, skin, parts)
 
 
-def author_blend(bpy, skin, parts, *, label=LABEL, asset=OUT, work=WORK):
+def author_blend(bpy, skin, parts, *, label=LABEL, asset=OUT, work=WORK, open_arms=False):
     # Use the editable repaired Liuchao workflow and keep the Web scalp as a
     # separately editable object with its baked material and original weights.
     sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -393,7 +393,7 @@ def author_blend(bpy, skin, parts, *, label=LABEL, asset=OUT, work=WORK):
             obj.parent = armature
             obj.modifiers.new('游戏动作骨架', 'ARMATURE').object = armature
     bake_source_samples(armature, rig, rest)
-    author.set_relaxed_stance(armature, rig, rest)
+    author.set_relaxed_stance(armature, rig, rest, open_arms=open_arms)
     armature.show_in_front = False
     author.set_up_preview(scene, armature)
     front = bpy.data.objects['正面 · 全身']

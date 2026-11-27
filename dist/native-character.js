@@ -137,9 +137,13 @@ export async function loadEnhancedCharacterData(id=0,appearance=DEFAULT_CHARACTE
   if(Number(id)!==descriptor.characterId)throw new Error(`${descriptor.label}目前仅提供孟星魂骨架适配`);
   const key=`${Number(id)}:${appearance}`,enhancedURL=new URL(descriptor.assetPath,import.meta.url);
   if(!enhancedCache.has(key))enhancedCache.set(key,(async()=>{
-    const manifestResponse=await fetch(new URL('manifest.json',enhancedURL));if(!manifestResponse.ok)throw new Error(`人物资源尚未就绪（${manifestResponse.status}）`);
+    const manifestURL=new URL('manifest.json',enhancedURL);
+    if(descriptor.assetRevision)manifestURL.searchParams.set('v',descriptor.assetRevision);
+    const manifestResponse=await fetch(manifestURL);if(!manifestResponse.ok)throw new Error(`人物资源尚未就绪（${manifestResponse.status}）`);
     const manifest=await manifestResponse.json();if(manifest.characterId!==descriptor.characterId||typeof manifest.mesh!=='string'||(manifest.appearance!==undefined&&manifest.appearance!==appearance))throw new Error('人物外观资源清单与骨架或外观不匹配');
-    const meshURL=new URL(manifest.mesh,enhancedURL),meshResponse=await fetch(meshURL);if(!meshResponse.ok)throw new Error(`人物模型读取失败（${meshResponse.status}）`);
+    const meshURL=new URL(manifest.mesh,enhancedURL);
+    if(descriptor.assetRevision)meshURL.searchParams.set('v',descriptor.assetRevision);
+    const meshResponse=await fetch(meshURL);if(!meshResponse.ok)throw new Error(`人物模型读取失败（${meshResponse.status}）`);
     return {manifest,skin:validateEnhancedSkin(await meshResponse.json()),path:new URL('./',meshURL)};
   })().catch(error=>{enhancedCache.delete(key);throw error;}));
   return enhancedCache.get(key);

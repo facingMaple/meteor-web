@@ -980,7 +980,7 @@ export class MeteorGame {
     const spawns = this._trainingSpawnPoints(count);
     const originals = sampleOpponents(NATIVE_CHARACTERS.filter(c => c.id !== this.hero.modelId), count);
     const appearances = lowBandwidth ? [] : sampleOpponents(
-      FEATURED_APPEARANCES.filter(id => id !== this.hero.character.appearance), count);
+      FEATURED_APPEARANCES.filter(id => id !== this.hero.character.appearance && !NATIVE_APPEARANCES[id].trial), count);
     const actors = [];
     const isCurrent = () => request === this.sessionRequest && !this.disposed;
     const results = await Promise.allSettled(spawns.map(async (spawn, i) => {

@@ -126,7 +126,7 @@ def create_parts(skin, parts, collection):
     return objects
 
 
-def set_relaxed_stance(armature, rig, rest):
+def set_relaxed_stance(armature, rig, rest, *, open_arms=False):
     """Author a neutral inspection pose on the same editable rig."""
     armature.animation_data.action = None
     pose = [armature.pose.bones[bone['name']] for bone in rig['bones']]
@@ -155,10 +155,17 @@ def set_relaxed_stance(armature, rig, rest):
         pose[ankle].matrix = foot
         bpy.context.view_layer.update()
 
-        aim(pose[upper_arm], pose[forearm], (side * .29, -.025, -1))
-        aim(pose[forearm], pose[hand], (side * .09, -.15, -1))
-        aim(pose[hand], pose[fingers], (-side * .04, -.08, -1))
-        aim(pose[fingers], pose[fingertips], (-side * .18, -.08, -1))
+        arm_directions = (
+            ((side * 1.03, -.025, -1), (side * .88, -.13, -1),
+             (side * .77, -.17, -1), (side * .65, -.25, -1))
+            if open_arms else
+            ((side * .29, -.025, -1), (side * .09, -.15, -1),
+             (-side * .04, -.08, -1), (-side * .18, -.08, -1))
+        )
+        for joint, endpoint, direction in zip(
+            (upper_arm, forearm, hand, fingers), (forearm, hand, fingers, fingertips), arm_directions,
+        ):
+            aim(pose[joint], pose[endpoint], direction)
 
     # Place the lower of the two flat soles back at the bind ground level.
     height = min(pose[i].head.z - rest[i].translation.z for i in (5, 9))
@@ -170,7 +177,7 @@ def set_relaxed_stance(armature, rig, rest):
         for channel in ('location', 'rotation_quaternion', 'scale'):
             bone.keyframe_insert(channel, frame=1, group=bone.name)
     action = armature.animation_data.action
-    action.name = '自然站立 · 放松垂臂'
+    action.name = '展示姿势 · 自然展臂' if open_arms else '自然站立 · 放松垂臂'
     action.use_fake_user = True
     bpy.context.scene.frame_set(1)
 

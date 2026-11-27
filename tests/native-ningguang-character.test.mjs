@@ -5,6 +5,7 @@ import {createHash} from 'node:crypto';
 import * as THREE from '../dist/vendor/three.module.js';
 import {createNativeCharacter,loadNativeCharacterData,loadEnhancedCharacterData,NATIVE_APPEARANCES} from '../dist/native-character.js';
 import {appearanceCharacterName,WORKSHOP_APPEARANCES} from '../dist/character-appearances.js';
+import {validateHairRig} from '../dist/hair-springs.js';
 
 // Runtime textures may be PNG or WebP (the deployment converts atlases to WebP
 // to fit a 3 Mbit uplink), so the check is "a real image with a known magic".
@@ -94,7 +95,10 @@ test('Ningguang preserves the source body: uniform vertices, unchanged segments,
   assert.ok(Math.abs(soleMin)<.05,`sole must sit on the ground plane, got ${soleMin}`);
   assert.ok(Math.abs(build.geometryBelowSole)<.05,`nothing hangs below the soles, got ${build.geometryBelowSole}`);
   assert.ok(meshMin>-.05);
-  assert.equal(skin.secondaryMotion,null,'this source has no hair spring chain');
+  // The .blend ships no hair chain, so the runtime surface carries a derived
+  // Web spring rig instead of a rigid head attachment.
+  assert.ok(skin.secondaryMotion,'the derived hair spring rig must ship with the asset');
+  assert.equal(validateHairRig(skin.secondaryMotion,30),skin.secondaryMotion.bones.length);
 }));
 
 test('Ningguang display rig follows the original moves without changing limb lengths',async()=>withFetch(async()=>{
@@ -105,7 +109,7 @@ test('Ningguang display rig follows the original moves without changing limb len
     actor.group.position.set(3,1,-2);actor.group.rotation.y=.5;actor.setPoseFrame(0,data.poses[262].end);
     const native=matrices(actor);
     assert.equal(actor.setSourceRestPose(true),true);actor.updateSecondaryMotion(1/60);
-    assert.equal(actor.secondaryMotionStatus.available,false,'this source has no hair spring chain');
+    assert.equal(actor.secondaryMotionStatus.available,true,'the derived hair springs must be active');
     const geometry=actor.mesh.geometry;
     for(let i=0;i<geometry.attributes.position.count;i+=37){
       point.fromBufferAttribute(geometry.attributes.position,i);

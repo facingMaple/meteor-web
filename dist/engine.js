@@ -99,6 +99,11 @@ export class MeteorGame {
     this.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75)); this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.NoToneMapping; this.renderer.shadowMap.enabled = false;
+    // ACES washes warm skin toward grey (measured: sRGB 241,209,193 → 228,217,209,
+    // saturation 0.199 → 0.083). Keep it only for the native look; imported
+    // characters use the PBR-neutral curve, which keeps 0.21 saturation on the
+    // same sample, and the scene keeps a neutral/warm floor bounce.
+    this.neutralToneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping;
     this.scene.add(new THREE.HemisphereLight(0xffffff, 0x596675, 2.7));
     const key = new THREE.DirectionalLight(0xffffff, 1.6); key.position.set(-20, 50, 30); this.scene.add(key);
     this.baseLights = this.scene.children.filter(object => object.isLight);
@@ -286,7 +291,7 @@ export class MeteorGame {
     this.scene.fog = data.fog || null;
     this.scene.background.setHex(data.background ?? (data.id === 'sn01' ? 0x080c0e : ['sn10', 'sn14'].includes(data.id) ? 0x24120c : 0x263038));
     for (const light of this.baseLights || []) light.visible = !data.enhanced;
-    this.renderer.toneMapping = data.enhanced ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    this.renderer.toneMapping = data.enhanced ? this.neutralToneMapping : THREE.NoToneMapping;
     this.renderer.toneMappingExposure = 1;
     this.renderer.shadowMap.enabled = !!data.enhanced && this.quality !== 'low';
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -2228,3 +2233,6 @@ export class MeteorGame {
     geometries.forEach(g => g.dispose()); materials.forEach(m => m.dispose()); textures.forEach(t => t.dispose()); this.collisionMaterial.dispose(); this.renderer.dispose(); this.audio?.close();
   }
 }
+
+
+

@@ -15,6 +15,13 @@ import {fileURLToPath} from 'node:url';
 const actions=new Set(['forward','back','left','right','attack','guard','burst','jump','crouch','lock','clear','look','switch','drop','pickup']);
 const token=()=>randomBytes(20).toString('hex');
 const finite=n=>typeof n==='number'&&Number.isFinite(n);
+const validMovementTiming=state=>
+  (state.moveTime===undefined||finite(state.moveTime)&&state.moveTime>=0&&state.moveTime<=1e9+1)&&
+  (state.moveScale===undefined||finite(state.moveScale)&&Math.abs(state.moveScale)<=100)&&
+  (state.inputAck===undefined||Number.isSafeInteger(state.inputAck)&&state.inputAck>=0)&&
+  (state.actionBusy===undefined||typeof state.actionBusy==='boolean')&&
+  (state.freeAir===undefined||typeof state.freeAir==='boolean')&&
+  (state.moveVelocity===undefined||Array.isArray(state.moveVelocity)&&state.moveVelocity.length===3&&state.moveVelocity.every(v=>finite(v)&&Math.abs(v)<5000));
 const validReactionPhase=phase=>phase==null||['hit','guard','down','recover'].includes(phase);
 const validWeaponMode=mode=>mode==null||['blade','spear','sheath'].includes(mode);
 const validPoseBlend=(b,source,frame)=>b==null||b&&[b.from,b.to].every(d=>d&&Number.isInteger(d.source)&&d.source>=0&&d.source<=1&&finite(d.frame)&&d.frame>=0&&d.frame<=200000)&&b.to.source===source&&b.to.frame===frame&&finite(b.weight)&&b.weight>=0&&b.weight<=1&&finite(b.duration)&&b.duration>0&&b.duration<=2&&(b.fromSnapshot===undefined||typeof b.fromSnapshot==='boolean');
@@ -54,7 +61,7 @@ export class NetworkRooms{
     });
   }
   list(){this.sweep();return {rooms:[...this.rooms.values()].map(r=>({code:r.code,hostName:r.players[0].name,mode:r.rules.mode,players:r.players.length,maxPlayers:r.rules.maxPlayers,phase:r.phase}))};}
-  public(room){return {stream:1,code:room.code,revision:room.revision||0,round:room.round||0,protocol:NETWORK_PROTOCOL,...room.rules,phase:room.phase,hostId:room.hostId,map:'sifang',result:room.result||null,scores:(room.frame?.players||[]).map(p=>({id:p.id,kills:p.kills||0,deaths:p.deaths||0,dead:!!p.dead})),players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,loaded:p.loaded,team:p.team,selection:p.selection}))};}
+  public(room){return {stream:1,fastSync:1,code:room.code,revision:room.revision||0,round:room.round||0,protocol:NETWORK_PROTOCOL,...room.rules,phase:room.phase,hostId:room.hostId,map:'sifang',result:room.result||null,scores:(room.frame?.players||[]).map(p=>({id:p.id,kills:p.kills||0,deaths:p.deaths||0,dead:!!p.dead})),players:room.players.map(p=>({id:p.id,name:p.name,ready:p.ready,loaded:p.loaded,team:p.team,selection:p.selection}))};}
 
   remove(room,player){
     (room.removedIds||=new Set()).add(player.id);room.players=room.players.filter(p=>p!==player);if(room.phase!=='finished')room.frame=null;room.revision=(room.revision||0)+1;
@@ -79,6 +86,7 @@ export class NetworkRooms{
       if(host&&Array.isArray(data.frame?.players)&&data.frame.players.some(s=>r.removedIds?.has(s.id)))return {room:this.public(r),input:[],acceptedSequence:p.lastSequence,frame:null};
       if(data.afterFrame!==undefined&&(!Number.isSafeInteger(data.afterFrame)||data.afterFrame<0||data.afterFrame>r.frameSequence))fail('状态确认无效');
       const additions=[],acknowledgements=[];
+      let published=false;
       if(data.input!==undefined){
         if(host||r.phase!=='playing')fail('当前不能提交操作',409);
         if(!Array.isArray(data.input)||data.input.length>64)fail('输入批次无效');
@@ -86,6 +94,7 @@ export class NetworkRooms{
         for(const input of data.input){
           if(!input||!actions.has(input.action)||typeof input.active!=='boolean'||!Number.isSafeInteger(input.sequence)||input.sequence<1||input.sequence<order||(input.pitch!==undefined&&(!finite(input.pitch)||Math.abs(input.pitch)>1.2))||!finite(input.angle)||Math.abs(input.angle)>1e6||(input.held!==undefined&&(!Array.isArray(input.held)||input.held.length>7||input.held.some(a=>!['forward','back','left','right','guard','crouch'].includes(a)))))fail('操作输入无效');
           if(input.time!==undefined&&(!finite(input.time)||input.time<0||input.time>1e9))fail('操作时间无效');
+          if(input.viewTime!==undefined&&(input.action!=='attack'||!input.active||!finite(input.viewTime)||input.viewTime<0||input.viewTime>(r.frame?.time??-1)+1e-6))fail('攻击视图时间无效');
           order=input.sequence;if(input.sequence<=sequence)continue;
           if(input.time!==undefined){if(inputTime!=null&&input.time<inputTime)fail('操作时间无效');inputTime=input.time;}
           sequence=input.sequence;additions.push({...input,held:input.held?[...input.held]:undefined,playerId:p.id});
@@ -101,11 +110,14 @@ export class NetworkRooms{
           acknowledgements.push([peer,sequence]);
         }
       }
-      if(data.frame!==undefined){if(!host)fail('只有房主能发布战斗状态',403);if(r.phase!=='playing')fail('对战尚未开始');const frame=data.frame;if(!frame||!validImpacts(frame.impacts,frame.time)||!validProjectiles(frame.projectiles,r.players)||!validShortFlights(frame.projectileFlights,r.players,frame.time)||!validLoot(frame.loot)||!Number.isSafeInteger(frame.sequence)||frame.sequence<=r.frameSequence||!Array.isArray(frame.players)||frame.players.length!==r.players.length||new Set(frame.players.map(p=>p.id)).size!==r.players.length||!finite(frame.time)||frame.time<0||r.frame&&frame.time<r.frame.time||frame.players.some(s=>!validInventory(s)||!validReactionPhase(s.reactionPhase)||!validWeaponMode(s.weaponMode)||!validPoseBlend(s.blend,s.source,s.frame)||!validDeathContext(s,frame.time)||(s.queuedMoveName!==undefined&&s.queuedMoveName!==null&&(typeof s.queuedMoveName!=='string'||s.queuedMoveName.length>64))||(s.lockTargetId!==undefined&&s.lockTargetId!==null&&(!r.players.some(p=>p.id===s.lockTargetId)||s.lockTargetId===s.id))||(s.autoLockEnabled!==undefined&&typeof s.autoLockEnabled!=='boolean')||(s.musketAim!==undefined&&typeof s.musketAim!=='boolean')||(s.aimPitch!==undefined&&(!finite(s.aimPitch)||Math.abs(s.aimPitch)>1.2))||!r.players.some(p=>p.id===s.id)||!Array.isArray(s.position)||s.position.length!==3||!s.position.every(n=>finite(n)&&Math.abs(n)<5000)||!finite(s.angle)||!finite(s.hp)||!finite(s.maxHp)||s.maxHp<=0||!finite(s.rage)||!Number.isInteger(s.pose)||!finite(s.frame)||!Number.isInteger(s.source)||!Number.isInteger(s.serial)||!finite(s.effectTime)))fail('战斗状态无效');if(frame.result!==undefined&&frame.result!==null&&(!['score','time','elimination','departure'].includes(frame.result.reason)||!Array.isArray(frame.result.winnerIds)||new Set(frame.result.winnerIds).size!==frame.result.winnerIds.length||frame.result.winnerIds.some(id=>!r.players.some(p=>p.id===id))))fail('结算状态无效');r.frame=frame;r.frameSequence=frame.sequence;if(frame.result){r.result=frame.result;r.phase='finished';r.revision=(r.revision||0)+1;}}
+      const superseded=host&&data.fastSync===1&&Number.isSafeInteger(data.frame?.sequence)&&data.frame.sequence>0&&data.frame.sequence<=r.frameSequence;
+      if(data.frame!==undefined&&!superseded){if(!host)fail('只有房主能发布战斗状态',403);if(r.phase!=='playing')fail('对战尚未开始');const frame=data.frame;if(!frame||!validImpacts(frame.impacts,frame.time)||!validProjectiles(frame.projectiles,r.players)||!validShortFlights(frame.projectileFlights,r.players,frame.time)||!validLoot(frame.loot)||!Number.isSafeInteger(frame.sequence)||frame.sequence<=r.frameSequence||!Array.isArray(frame.players)||frame.players.length!==r.players.length||new Set(frame.players.map(p=>p.id)).size!==r.players.length||!finite(frame.time)||frame.time<0||r.frame&&frame.time<r.frame.time||frame.players.some(s=>!validInventory(s)||!validMovementTiming(s)||!validReactionPhase(s.reactionPhase)||!validWeaponMode(s.weaponMode)||!validPoseBlend(s.blend,s.source,s.frame)||!validDeathContext(s,frame.time)||(s.queuedMoveName!==undefined&&s.queuedMoveName!==null&&(typeof s.queuedMoveName!=='string'||s.queuedMoveName.length>64))||(s.lockTargetId!==undefined&&s.lockTargetId!==null&&(!r.players.some(p=>p.id===s.lockTargetId)||s.lockTargetId===s.id))||(s.autoLockEnabled!==undefined&&typeof s.autoLockEnabled!=='boolean')||(s.musketAim!==undefined&&typeof s.musketAim!=='boolean')||(s.aimPitch!==undefined&&(!finite(s.aimPitch)||Math.abs(s.aimPitch)>1.2))||!r.players.some(p=>p.id===s.id)||!Array.isArray(s.position)||s.position.length!==3||!s.position.every(n=>finite(n)&&Math.abs(n)<5000)||!finite(s.angle)||!finite(s.hp)||!finite(s.maxHp)||s.maxHp<=0||!finite(s.rage)||!Number.isInteger(s.pose)||!finite(s.frame)||!Number.isInteger(s.source)||!Number.isInteger(s.serial)||!finite(s.effectTime)))fail('战斗状态无效');if(frame.result!==undefined&&frame.result!==null&&(!['score','time','elimination','departure'].includes(frame.result.reason)||!Array.isArray(frame.result.winnerIds)||new Set(frame.result.winnerIds).size!==frame.result.winnerIds.length||frame.result.winnerIds.some(id=>!r.players.some(p=>p.id===id))))fail('结算状态无效');r.frame=frame;r.frameSequence=frame.sequence;published=true;if(frame.result){r.result=frame.result;r.phase='finished';r.revision=(r.revision||0)+1;}}
       // Commit only after every field is validated: a rejected request must
       // neither consume operations nor partially accept an input batch.
       if(additions.length){p.input.push(...additions);p.lastSequence=additions.at(-1).sequence;for(const input of additions)if(input.time!==undefined)p.lastInputTime=input.time;}
       for(const [peer,sequence] of acknowledgements){peer.ackSequence=Math.max(peer.ackSequence,sequence);peer.input=peer.input.filter(x=>x.sequence>peer.ackSequence);}
+      if(published)this.notify(code,'guest');
+      if(additions.length)this.notify(code,'host');
     }else fail('未知房间操作',404);
     if(operation!=='sync')r.revision=(r.revision||0)+1;
     const input=host&&operation==='sync'&&r.phase==='playing'?r.players.filter(x=>x!==p).flatMap(x=>{
@@ -113,7 +125,7 @@ export class NetworkRooms{
       if(q.length)x.deliveredSequence=Math.max(x.deliveredSequence,q.at(-1).sequence);
       if(this.now()-x.seen>1500)q.push({playerId:x.id,action:'clear',active:false,angle:0,sequence:0});return q;
     }):[];
-    if(operation!=='sync')this.notify(code);else{if(data.frame)this.notify(code,'guest');if(data.input?.length)this.notify(code,'host');}
+    if(operation!=='sync')this.notify(code);
     return {room:this.public(r),input,acceptedSequence:p.lastSequence,frame:host||r.frame&&r.frame.sequence<=data.afterFrame?null:r.frame};
   }
 }
@@ -149,6 +161,14 @@ async function encodeOnce(key,body,encoding){
   return output;
 }
 export function createNetworkServer({rooms=new NetworkRooms(),root=fileURLToPath(new URL('./dist/',import.meta.url))}={}){
+  const encodedFrames=new WeakMap();
+  function streamPacket(packet){
+    const {frame,...metadata}=packet;
+    if(!frame)return JSON.stringify(packet)+'\n';
+    let encoded=encodedFrames.get(frame);
+    if(encoded===undefined){encoded=JSON.stringify(frame);encodedFrames.set(frame,encoded);}
+    return JSON.stringify(metadata).slice(0,-1)+',"frame":'+encoded+'}\n';
+  }
   return http.createServer(async(req,res)=>{
     const json=(status,data)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});res.end(JSON.stringify(data));};
     try{
@@ -162,7 +182,7 @@ export function createNetworkServer({rooms=new NetworkRooms(),root=fileURLToPath
           const cleanup=()=>{clearInterval(heartbeat);unsubscribe?.();};
           const send=()=>{
             if(res.destroyed)return;if(blocked){dirty=true;return;}
-            try{const result=rooms.request(code,credential,'sync',{}, {touch:false});blocked=!res.write(JSON.stringify(result)+'\n');}
+            try{const result=rooms.request(code,credential,'sync',{}, {touch:false});blocked=!res.write(streamPacket(result));}
             catch(error){res.end(JSON.stringify({error:error.status?error.message:'实时连接已断开'})+'\n');cleanup();}
           };
           unsubscribe=rooms.subscribe(code,credential,send);

@@ -17,11 +17,11 @@ export class NetworkLobby{
     if(!this.client){
       const draft=this.draft||={name:'江湖来客',mode:'leader',maxPlayers:MAX_NETWORK_PLAYERS,scoreLimit:10,timeLimit:600,code:''};
       const layout=node('div',undefined,'room-browser'),main=node('section',undefined,'room-browser-main',layout),aside=node('section',undefined,'room-create',layout);
-      const tools=node('div',undefined,'room-tools',main);node('h3','局域网房间','',tools);button(this.listLoading?'正在读取…':'刷新列表',()=>this.refreshRooms(),tools).disabled=!!this.listLoading;
+      const tools=node('div',undefined,'room-tools',main);node('h3','联机房间','',tools);button(this.listLoading?'正在读取…':'刷新列表',()=>this.refreshRooms(),tools).disabled=!!this.listLoading;
       node('p','同一服务 · 2～16 人 · 四方阵','',main);
       const filters=node('div',undefined,'room-filters',main);for(const [value,label] of [['all','全部'],...Object.entries(NETWORK_MODES)]){const choice=button(label,()=>{this.roomFilter=value;this.render();},filters);choice.setAttribute('aria-pressed',String((this.roomFilter||'all')===value));}
       if(this.listError)node('p',this.listError,'',main).setAttribute('role','alert');
-      else if(!this.listLoading&&!(this.availableRooms||[]).length)node('p','尚无房间。创建一间，邀请朋友加入；请确认大家使用同一个局域网游戏地址。','',main);
+      else if(!this.listLoading&&!(this.availableRooms||[]).length)node('p','尚无房间。创建一间，邀请朋友加入；请确认大家使用同一个游戏地址。','',main);
       const visibleRooms=(this.availableRooms||[]).filter(room=>!this.roomFilter||this.roomFilter==='all'||room.mode===this.roomFilter);if(!this.listLoading&&(this.availableRooms||[]).length&&!visibleRooms.length)node('p','当前模式没有房间，可切换模式或创建房间。','',main);
       for(const room of visibleRooms){const row=node('div',undefined,'room-row',main);node('p',`${room.hostName}的房间\n${room.code} · ${NETWORK_MODES[room.mode]||'盟主'} · ${room.players}/${room.maxPlayers}人 · ${room.phase==='waiting'?'等待加入':room.phase==='finished'?'已结束':'对战中'}`,'',row);button(room.phase!=='waiting'?'不可加入':room.players>=room.maxPlayers?'已满':'加入 '+room.code,()=>this.connect('join',{name:draft.name,code:room.code}),row).disabled=room.phase!=='waiting'||room.players>=room.maxPlayers;}
       node('h3','召集同道','',aside);

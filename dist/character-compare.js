@@ -86,7 +86,15 @@ function studio(actor) {
   const rim = new THREE.DirectionalLight(0xc5e1d1, 1.1); rim.position.set(1, 3, -4); scene.add(rim);
   const floor = new THREE.Mesh(new THREE.CircleGeometry(8, 96), new THREE.MeshStandardMaterial({ color: 0x283331, roughness: .96 })); floor.rotation.x = -Math.PI / 2; floor.position.y = -.035; scene.add(floor);
   const ring = new THREE.Mesh(new THREE.RingGeometry(1.05, 1.055, 96), new THREE.MeshBasicMaterial({ color: 0x778878, transparent: true, opacity: .38, side: THREE.DoubleSide })); ring.rotation.x = -Math.PI / 2; ring.position.y = -.025; scene.add(ring);
-  scene.add(actor.group); return scene;
+  scene.add(actor.group);
+  // The floor used to sit at a fixed -0.035, which left models whose sole rests
+  // on zero (imported characters) hovering centimetres above it. Fit the floor
+  // to the actor instead so every appearance stands on the same plane.
+  const bounds = new THREE.Box3().setFromObject(actor.group);
+  const ground = Number.isFinite(bounds.min.y) ? bounds.min.y : 0;
+  floor.position.y = ground - 0.002;
+  ring.position.y = ground - 0.001;
+  return scene;
 }
 async function sword() {
   const root = new URL('./assets/original/weapon-models/', import.meta.url), manifest = await fetch(new URL('manifest.json', root)).then(response => { if (!response.ok) throw new Error('原版武器清单未能读取'); return response.json(); });
@@ -149,7 +157,7 @@ window.addEventListener('resize', () => { if (renderer) { resize(); render(); } 
 window.addEventListener('pagehide', () => { disposed = true; cancelAnimationFrame(raf); actors.forEach(actor => actor.dispose()); renderer?.dispose(); });
 
 try {
-  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' }); renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 2)); renderer.outputColorSpace = THREE.SRGBColorSpace; renderer.toneMapping = THREE.NeutralToneMapping ?? THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   camera = new THREE.PerspectiveCamera(36, 1, .05, 100); resize();
   const [reference, enhanced, combat] = await Promise.all([loadNativeCharacter(0, { inPlace: true, appearance: referenceAppearance(initialAppearance) }), loadNativeCharacter(0, { inPlace: true, appearance: initialAppearance }), loadNativeCombat()]);
   actors = [reference, enhanced]; if (reference.appearance !== referenceAppearance(initialAppearance)) throw new Error(reference.appearanceStatus.reason || '对照人物无法载入'); await enhanced.setAppearance(initialAppearance, { allowIncomplete: true }); state.complete = enhanced.appearanceStatus.complete !== false; if (enhanced.appearance !== initialAppearance) throw new Error(enhanced.appearanceStatus.reason || '所选外观尚未能载入');
@@ -161,3 +169,6 @@ try {
 } catch (error) {
   console.error(error); const loading = $('#compare-loading'); loading.replaceChildren(); const title = document.createElement('strong'); title.textContent = '人物工坊暂未准备好'; const description = document.createElement('p'); description.textContent = error.message; const retry = document.createElement('button'); retry.className = 'primary'; retry.textContent = '重新载入'; retry.addEventListener('click', () => location.reload()); loading.append(title, description, retry);
 }
+
+
+

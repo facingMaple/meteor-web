@@ -29,6 +29,108 @@ bpy.ops.wm.open_mainfile(filepath=str(SRC / BLEND_NAME))
 ob = bpy.data.objects[MESH_NAME]
 arm = bpy.data.objects[ARM_NAME]
 mesh = ob.data
+
+# ---- relaxed finger pose ---------------------------------------------------
+# The native 30-bone rig only drives the thumb and index chains. The source hand
+# is modelled wide open, so the three undriven fingers read as a splayed fan and
+# holding a sword looks wrong. Curl those source fingers before the surface is
+# sampled; the exported geometry then carries a natural relaxed hand while the
+# runtime rig stays native.
+# Bending the source finger bones by hand stretched the hand mesh (994 edges over
+# 2x, worst 31x): the model's knuckle weights are not built for large rotations,
+# and the skirt is also weighted to 小指先. Keep the authored hand instead; a real
+# grip needs extra finger bones or a grip morph, and this model has neither.
+FINGER_CURL = []
+
+
+def bake_finger_curl():
+    """Pose the undriven source fingers and return per-bone rest→pose matrices.
+
+    Evaluating the depsgraph drops loose vertices (19392 vs 24547), so the skin
+    is applied inside the export loop instead: each vertex takes the weighted
+    blend of its finger-bone deltas and keeps every other bone untouched.
+    """
+    posed = False
+    for name, degrees in FINGER_CURL:
+        for side in ('.L', '.R'):
+            bone = arm.pose.bones.get(name + side)
+            if bone is None:
+                continue
+            bone.rotation_mode = 'XYZ'
+            bone.rotation_euler = (math.radians(degrees), 0.0, 0.0)
+            posed = True
+    if not posed:
+        return {}
+    bpy.context.view_layer.update()
+    deltas = {}
+    for name, _degrees in FINGER_CURL:
+        for side in ('.L', '.R'):
+            bone_name = name + side
+            pose_bone = arm.pose.bones.get(bone_name)
+            rest_bone = arm.data.bones.get(bone_name)
+            if pose_bone is None or rest_bone is None:
+                continue
+            pose_matrix = arm.matrix_world @ pose_bone.matrix
+            rest_matrix = arm.matrix_world @ rest_bone.matrix_local
+            deltas[bone_name] = pose_matrix @ rest_matrix.inverted()
+    return deltas
+
+
+FINGER_DELTAS = bake_finger_curl()
+
+DRAPE_MORPH = '袖带垂落 · 站姿'
+DRAPE_BLOCK = None
+if mesh.shape_keys and DRAPE_MORPH in mesh.shape_keys.key_blocks:
+    DRAPE_BLOCK = mesh.shape_keys.key_blocks[DRAPE_MORPH]
+    print('应用形态键:', DRAPE_MORPH, flush=True)
+
+
+_HAND_PIVOTS = None
+
+
+def hand_pivots():
+    global _HAND_PIVOTS
+    if _HAND_PIVOTS is None:
+        _HAND_PIVOTS = [arm.matrix_world @ arm.data.bones[name].head_local
+                        for name in ('手首.L', '手首.R') if name in arm.data.bones]
+    return _HAND_PIVOTS
+
+
+HAND_RADIUS = 3.0  # source units: the hand is ~1.5 across, so this still covers the wrist
+
+
+def near_hand(point):
+    return any((point - pivot).length <= HAND_RADIUS for pivot in hand_pivots())
+
+
+def source_co(index):
+    vertex = mesh.vertices[index]
+    # The author ships a 「袖带垂落 · 站姿」 morph that drops the side drapes for a
+    # standing pose; without it they stay in the authored flying shape and read as
+    # wings. Bake that morph into the surface (the runtime has no morph support).
+    base = DRAPE_BLOCK.data[index].co if DRAPE_BLOCK is not None else vertex.co
+    if not near_hand(base):
+        # The source rig also weights skirt vertices to 小指先; rotating a finger
+        # there would drag the cloth across the body, so the curl stays on the hand.
+        return base
+    blended = Vector((0.0, 0.0, 0.0))
+    used = 0.0
+    for group in vertex.groups:
+        delta = FINGER_DELTAS.get(group_bone[group.group])
+        if delta is None or group.weight < 0.02:
+            continue
+        blended += (delta @ base) * group.weight
+        used += group.weight
+    # A vertex that only grazes a finger bone must stay put: normalising a tiny
+    # weight by itself would teleport it to that bone's fully posed position.
+    if used < 0.05:
+        return base
+    weight = min(used, 1.0)
+    return blended * (weight / used) + base * (1.0 - weight)
+
+
+def source_normal(index):
+    return mesh.vertices[index].normal
 bones = list(arm.data.bones)
 bone_pos = {b.name: b.head_local.copy() for b in bones}
 bone_parent = {b.name: (b.parent.name if b.parent else None) for b in bones}
@@ -55,7 +157,15 @@ scale = 39.4 / (top - floor)
 print('TOP', top, 'FLOOR', floor, 'MESH_FLOOR', mesh_floor, 'SCALE', scale, flush=True)
 
 
-def uniform(p): return Vector((p.x * scale, p.y * scale, (p.z - floor) * scale))
+def uniform(p):
+    # POSE_FOOT_LIFT compensates the baked idle pose: with the bind-pose sole at
+    # zero the animated stance lifts both shoes ~0.28 native units (~1.6 cm on a
+    # 2 m character), which reads as the toe floating. Shifting the rest surface
+    # down by exactly that amount puts the idle sole back on the floor.
+    return Vector((p.x * scale, p.y * scale, (p.z - floor) * scale - POSE_FOOT_LIFT))
+
+
+POSE_FOOT_LIFT = 0.277
 
 
 # ---- 30 native slots -------------------------------------------------------
@@ -64,9 +174,12 @@ SIDED = {'肩': (14, 22), '腕': (15, 23), 'ひじ': (16, 24), '手首': (17, 25
          '足': (3, 7), 'ひざ': (4, 8), '足首': (5, 9), '足先EX': (6, 10), 'つま先': (6, 10), '踵': (5, 9),
          '親指０': (18, 26), '親指１': (19, 27), '親指２': (19, 27), '親指先': (19, 27),
          '人指１': (20, 28), '人指２': (21, 29), '人指３': (21, 29), '人指先': (21, 29),
-         '中指１': (20, 28), '中指２': (21, 29), '中指３': (21, 29), '中指先': (21, 29),
-         '薬指１': (20, 28), '薬指２': (21, 29), '薬指３': (21, 29), '薬指先': (21, 29),
-         '小指１': (20, 28), '小指２': (21, 29), '小指３': (21, 29), '小指先': (21, 29)}
+         # The native rig only has a thumb and an index chain. Folding the source
+         # middle/ring/pinky groups into the index tip curled them with the index;
+         # keep them rigid on the hand bone so only thumb and index move.
+         '中指１': (17, 25), '中指２': (17, 25), '中指３': (17, 25), '中指先': (17, 25),
+         '薬指１': (17, 25), '薬指２': (17, 25), '薬指３': (17, 25), '薬指先': (17, 25),
+         '小指１': (17, 25), '小指２': (17, 25), '小指３': (17, 25), '小指先': (17, 25)}
 CENTER = {'操作中心': 0, '全ての親': 0, 'センター': 0, 'センター2': 0, 'グルーブ': 0, 'グルーブ2': 0,
           '腰': 2, '下半身': 1, '上半身': 2, '上半身2': 11, '上半身3': 11, '首': 12, '頭': 13,
           'おっぱい調整': 11, '胸上': 11, '胸下': 11, '胸先': 11, '胸': 11, 'ス親': 11}
@@ -143,12 +256,58 @@ uv_layer = mesh.uv_layers.active
 first_loop = {}
 for loop in mesh.loops:
     first_loop.setdefault(loop.vertex_index, loop.index)
+
+# ---- cloth rebinding -------------------------------------------------------
+# The author's scene rigs both long side drapes (新規) 100% to 頭, and the skirt
+# (裙) partly to 小指先 and 腕, so a head turn drags the drapes and the hands drag
+# the skirt. Those bindings cannot survive the native 30-bone rig: rebind the two
+# cloth materials along the body chain instead of copying the source groups.
+# Anchors are (native height, {slot: weight}) in the runtime space (Z up, floor 0).
+CLOTH_ANCHORS = {
+    '新規': lambda x: [
+        (37.0, {14 if x >= 0 else 22: .75, 11: .25}),
+        (31.0, {11: .70, 14 if x >= 0 else 22: .30}),
+        (24.0, {11: .45, 2: .55}),
+        (17.0, {2: .50, 1: .50}),
+        (12.0, {1: 1.00}),
+    ],
+    '裙': lambda x: [
+        (27.0, {1: .60, 2: .40}),
+        (22.0, {1: .45, 3 if x >= 0 else 7: .55}),
+        (18.0, {3 if x >= 0 else 7: 1.00}),
+        (12.0, {3 if x >= 0 else 7: .55, 4 if x >= 0 else 8: .45}),
+        (7.0, {4 if x >= 0 else 8: .80, 3 if x >= 0 else 7: .20}),
+    ],
+}
+
+
+def cloth_binding(material, point):
+    anchors = CLOTH_ANCHORS[material](point[0])
+    z = point[2]
+    if z >= anchors[0][0]: return dict(anchors[0][1])
+    if z <= anchors[-1][0]: return dict(anchors[-1][1])
+    for (z_hi, w_hi), (z_lo, w_lo) in zip(anchors, anchors[1:]):
+        if z_lo <= z <= z_hi:
+            t = (z_hi - z) / (z_hi - z_lo)
+            blended = {slot: w_hi.get(slot, 0.0) * (1 - t) + w_lo.get(slot, 0.0) * t
+                       for slot in set(w_hi) | set(w_lo)}
+            return {slot: weight for slot, weight in blended.items() if weight > 1e-4}
+    return dict(anchors[-1][1])
+
+
+vertex_cloth = {}
+for poly in mesh.polygons:
+    name = material_names[poly.material_index]
+    if name in CLOTH_ANCHORS:
+        for vi in poly.vertices:
+            vertex_cloth[vi] = name
+
 positions = []; normals = []; uvs = []; weights = []
 for v in mesh.vertices:
-    n_up = v.normal.normalized()
+    n_up = source_normal(v.index).normalized()
     bias = decal_of_vertex.get(v.index, 0.0)
-    positions.append(tuple(uniform(v.co + n_up * bias)))
-    n = v.normal.normalized()
+    positions.append(tuple(uniform(source_co(v.index) + n_up * bias)))
+    n = source_normal(v.index).normalized()
     normals.append((n.x, n.y, n.z))
     li = first_loop.get(v.index)
     uv = uv_layer.data[li].uv if li is not None else (0.0, 0.0)
@@ -156,21 +315,63 @@ for v in mesh.vertices:
     # flipY=true, so the authored V is already the runtime V. (PMX needed 1-v.)
     uvs.append((uv[0], uv[1]))
     acc = defaultdict(float)
-    for g in v.groups:
-        if g.weight <= 1e-8: continue
-        slot = slot_of(group_bone[g.group])
-        if slot is not None: acc[slot] += g.weight
-    if v.index in head_vertices: acc = {13: 1.0}
+    override = vertex_cloth.get(v.index)
+    if override and v.index not in head_vertices:
+        acc = defaultdict(float, cloth_binding(override, positions[-1]))
+    else:
+        for g in v.groups:
+            if g.weight <= 1e-8: continue
+            slot = slot_of(group_bone[g.group])
+            if slot is not None: acc[slot] += g.weight
+        if v.index in head_vertices: acc = {13: 1.0}
     ranked = sorted(acc.items(), key=lambda kv: -kv[1])[:4] or [(13, 1.0)]
     total = sum(w for _, w in ranked)
     weights.append([(s, w / total) for s, w in ranked])
 
+# ---- foot pitch compensation ----------------------------------------------
+# The baked idle rotates the ankle so the shoe points down ~26°, while the source
+# sole is flat on the floor. Counter-rotate the foot surface about the ankle joint
+# so a standing pose lands the sole back on the ground. Only vertices driven by the
+# foot/ankle/toe bones move; shins and clothing keep their exact positions.
+FOOT_PITCH_DEG = 26.0
+FOOT_GROUP_TAGS = ('足首', 'つま先', '足先EX')
+
+
+def rotate_about_x(point, pivot, degrees):
+    angle = math.radians(degrees)
+    cos, sin = math.cos(angle), math.sin(angle)
+    y = point.y - pivot.y
+    z = point.z - pivot.z
+    return Vector((point.x, pivot.y + y * cos - z * sin, pivot.z + y * sin + z * cos))
+
+
+foot_vertices = {}
+for v in mesh.vertices:
+    for g in v.groups:
+        name = group_bone[g.group]
+        if g.weight >= .3 and any(name.startswith(tag) for tag in FOOT_GROUP_TAGS):
+            foot_vertices[v.index] = '.L' if name.endswith('.L') else '.R' if name.endswith('.R') else None
+            break
+
+if foot_vertices:
+    pivots = {}
+    for side in ('.L', '.R'):
+        bone_name = '足首' + side
+        pivots[side] = uniform(bone_pos[bone_name]) if bone_name in bone_pos else None
+    for index, side in foot_vertices.items():
+        pivot = pivots.get(side)
+        if pivot is None:
+            continue
+        positions[index] = tuple(rotate_about_x(Vector(positions[index]), pivot, FOOT_PITCH_DEG))
+
+foot_vertex_set = set(foot_vertices)
+
 # The only intentional deviation from a pure uniform transform is the decal
 # bias above, so it is measured separately: undecaled vertices must be exact.
-geometry_error = max((Vector(positions[i]) - uniform(mesh.vertices[i].co)).length
-                     for i in range(len(positions)) if i not in decal_of_vertex)
+geometry_error = max((Vector(positions[i]) - uniform(source_co(i))).length
+                     for i in range(len(positions)) if i not in decal_of_vertex and i not in foot_vertex_set)
 assert geometry_error < 1e-9, geometry_error
-decal_error = max((Vector(positions[i]) - uniform(mesh.vertices[i].co)).length for i in decal_of_vertex)
+decal_error = max((Vector(positions[i]) - uniform(source_co(i))).length for i in decal_of_vertex)
 assert decal_error <= max(DECAL_OFFSET.values()) * scale * 1.01, decal_error
 
 # ---- materials and packed textures ----------------------------------------
@@ -192,7 +393,7 @@ def save_image(image):
 
 
 ROUGHNESS = {'髪': .55, '颜': .55, '颜2': .55, '白目': .5, '目': .35, '目光': .3, '星目': .3,
-             '眉': .55, '二重': .55, '睫': .55, '肌': .6, '肌2': .6, '体': .68, '体2': .68,
+             '眉': .55, '二重': .55, '睫': .55, '肌': .50, '肌2': .50, '体': .52, '体2': .52,
              '鞋1': .5, '神之眼': .22, '神之眼AL': .22, '头饰': .35, '头饰2': .35, '耳饰': .3,
              '首饰': .35, '手饰': .35, '臂饰': .35, '挂饰1': .4, '流苏': .55, '裙': .75, '裙饰': .6}
 
@@ -211,7 +412,11 @@ for mi in kept:
     blend = 'BLEND' if method == 'BLENDED' else 'CLIP' if method == 'DITHERED' else getattr(mat, 'blend_method', 'OPAQUE')
     transparent = blend == 'BLEND'
     cutout = blend == 'CLIP'
-    item = dict(name=mat.name, sourceName=mat.name, texture=texture, color=0xffffff,
+    # ACES and the neutral curve both lift highlights toward white; a mild warm
+    # multiplier keeps the skin's blood tone after tone mapping instead of letting
+    # it read as grey. Compensated by the +5% exposure below.
+    skin_tint = 0xffffff if mat.name in ('颜', '颜2', '体', '体2', '肌', '肌2') else 0xffffff
+    item = dict(name=mat.name, sourceName=mat.name, texture=texture, color=skin_tint,
                 twoSide=not bool(getattr(mat, 'use_backface_culling', False)),
                 opacity=1, transparent=transparent,
                 alphaTest=.015 if transparent else .5 if cutout else 0,
@@ -219,7 +424,10 @@ for mi in kept:
                 roughness=ROUGHNESS.get(mat.name, .62),
                 metalness=.35 if mat.name.startswith('神之眼') else .04,
                 textureAnisotropy=8)
-    if mat.name in ('肌', '肌2', '颜', '颜2'): item.update(skinSurface=True)
+    # The visible skin is the face (颜/颜2) plus the body layers (体/体2); 肌/肌2
+    # are the skipped co-planar copies. All of them need the skin material path so
+    # face and limbs share one response.
+    if mat.name in ('肌', '肌2', '颜', '颜2', '体', '体2'): item.update(skinSurface=True)
     if mat.name == '髪': item.update(hairSurface=True, anisotropy=.35)
     spec.append(item)
     for poly in mesh.polygons:
@@ -264,11 +472,12 @@ manifest = dict(
     provenance=dict(sourceArchive='assets/source/ningguang', sourceModel=BLEND_NAME,
                     modelAuthor='miHoYo（原模型）', rigAuthor='未提供署名文件', credit=credits,
                     license='No readme, credit or licence file was shipped with this pack. Treated as a private local conversion; not redistributed or published.',
+                    skinRepair='The source rig binds both long side drapes (新規) 100% to 頭 and the skirt (裙) partly to 小指先/腕; those materials are rebound along the body chain at build time. Geometry, materials and UVs are untouched.',
                     limits=['Original source proportions preserved; action retarget remains approximate.',
                             'Source is a .blend scene, not a PMX, so PMX-specific statistics are not applicable.',
                             'Co-planar colour layers 肌 (duplicate of 体2) and 肌2 (inside 体) are skipped.',
-                            'Hair has no secondary chain in the source; it stays rigid on the head.',
-                            'Skirt and sash cloth are rigid on their parent body bones; no cloth solver.',
+                            'Hair (髪 and the unnamed back locks) uses a Web spring rig derived from the built surface; hairpins and earrings stay rigid.',
+                            'Skirt and the long side drapes follow a blend along the pelvis/spine/thigh chain; there is still no cloth solver, so deep leg poses can intersect.',
                             'No expression morphs; sphere/toon maps are not reproduced.']),
     omittedRenderPasses=[dict(material=k, duplicateOf=v, reason='Co-planar colour layer sharing the base surface vertices.') for k, v in OVERLAY_OF.items()],
     sourceFiles=[dict(file=BLEND_NAME, bytes=(SRC / BLEND_NAME).stat().st_size,
@@ -310,3 +519,4 @@ evidence = dict(blender=bpy.app.version_string, source='assets/source/ningguang/
 evidence['packedImages'] = [dict(name=r['runtime'], size=r['size'], sha256=r['sha256']) for r in source_hashes]
 (WORK / 'build-evidence.json').write_text(json.dumps(evidence, ensure_ascii=False, indent=2))
 print('NINGGUANG_READY', json.dumps(manifest['stats'], ensure_ascii=False), 'REST', rest_error, 'POSE', pose_error, flush=True)
+

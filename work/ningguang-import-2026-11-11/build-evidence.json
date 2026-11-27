@@ -1,9 +1,9 @@
 {
-  "blender": "5.4.0 Alpha",
+  "blender": "5.3.0",
   "source": "assets/source/ningguang/凝光_纱中幽兰_可编辑.blend",
   "sourceFormat": "blend",
   "sourceDownloadsRequired": false,
-  "restMatrixError": 3.0994415283203125e-06,
+  "restMatrixError": 3.039836883544922e-06,
   "poseMatrixError": 7.62939453125e-06,
   "bakedActions": [
     {
@@ -34,7 +34,7 @@
     "白目": 0.0025,
     "睫": 0.0035
   },
-  "decalBiasMax": 0.08233072969543832,
+  "decalBiasMax": 0.08233155529373223,
   "proportionalDisplayRig": true,
   "sourceBones": 94,
   "nativeSlots": 30,
@@ -60,8 +60,8 @@
     "肌2": "体"
   },
   "hashes": {
-    "manifest.json": "bdd9affc5721a9143f566bd8795c67383993045b78f54c44588e4faa95ac87e5",
-    "mesh.json": "cc008139d02dc133d689abccf5a4cf87aa7ef2a7f7f13f47fcbe7bc4ff5ee58e"
+    "manifest.json": "8218f3d9b778c8337db8af9e9196ca16ade5abb0a2a9b671dd5fe1ddd7c19606",
+    "mesh.json": "a7d66f050e0822c9108909d35323b356537dfe5fe0ae0c23ad6598e86a9c80dc"
   },
   "packedImages": [
     {

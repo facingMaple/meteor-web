@@ -20,12 +20,30 @@ function resize() {
   width = stage.clientWidth; height = stage.clientHeight;
   renderer.setSize(width, height, false); camera.aspect = width / 2 / height; camera.updateProjectionMatrix();
 }
+function fitGround(scene, actor) {
+  const mesh = actor?.mesh;
+  if (!mesh?.computeBoundingBox || !scene?.userData?.ground) return;
+  // SkinnedMesh.computeBoundingBox walks the skinned vertices, so this reflects
+  // the pose that is currently applied instead of the rest geometry.
+  actor.group.updateMatrixWorld(true);
+  mesh.computeBoundingBox();
+  const box = mesh.boundingBox;
+  if (!box) return;
+  const minY = box.clone().applyMatrix4(mesh.matrixWorld).min.y;
+  if (!Number.isFinite(minY)) return;
+  const { floor, ring } = scene.userData.ground;
+  floor.position.y = minY - 0.002;
+  ring.position.y = minY - 0.001;
+}
+function fitAllGrounds() {
+  for (let side = 0; side < scenes.length; side++) fitGround(scenes[side], actors[side]);
+}
 function setMotion(name) {
   if (!motions?.[name]) return;
   actors.forEach(actor=>actor.setSourceRestPose?.(false)); updateSourceRestControl();
   state.motion = name; state.time = 0;
   document.querySelectorAll('[data-motion]').forEach(button => button.setAttribute('aria-pressed', String(button.dataset.motion === name)));
-  renderPose(); actors.forEach(actor=>actor.resetSecondaryMotion()); render();
+  renderPose(); actors.forEach(actor=>actor.resetSecondaryMotion()); if (name === 'idle') fitAllGrounds(); render();
 }
 function setView(view) {
   const sourceProportions=actors[1]?.sourceRestAvailable;

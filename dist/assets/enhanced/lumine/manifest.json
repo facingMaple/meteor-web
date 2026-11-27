@@ -67,7 +67,7 @@
       "sha256": "b92cf1066bbc8762c899c48e993f9d91321fdc02150f13c4a8c840e55b6371eb"
     },
     {
-      "file": "Texture/颜.png",
+      "file": "Texture/颜.webp",
       "runtime": "textures/颜.webp",
       "sha256": "3ee58773d72cabd440daefbd1c0c74d7cf6963b3425830d061e40890172aac15",
       "size": [
@@ -80,7 +80,7 @@
       "runtimeBytes": 59092
     },
     {
-      "file": "Texture/髪.png",
+      "file": "Texture/髪.webp",
       "runtime": "textures/髪.webp",
       "sha256": "01b43bc5145c89a28c6f55f0874d4a8c28229edcab952a06be193fc8ef629a8a",
       "size": [

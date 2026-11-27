@@ -85,7 +85,7 @@
       "sha256": "b975976e65769d93a84bc78be865398af3dea6feff14a9c181413552fbae74a1"
     },
     {
-      "file": "tex/颜.png",
+      "file": "tex/颜.webp",
       "runtime": "textures/颜.webp",
       "sha256": "a77b9508883be4f53b2f56fdf3d87355b0630718fbe373584f9265b613ad6d8b",
       "size": [
@@ -124,7 +124,7 @@
       "runtimeBytes": 120848
     },
     {
-      "file": "tex/体.png",
+      "file": "tex/体.webp",
       "runtime": "textures/体.webp",
       "sha256": "8eed399949e98c901df605dd17c25fea56ab3c75aec43cc81af681c9cb3421fe",
       "size": [

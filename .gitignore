@@ -10,3 +10,6 @@ tools/
 work/meteor-original/ghidra-project/
 work/meteor-original/*.log
 work/meteor-original/upload-batches.json
+
+# 贴图转换中间产物（运行时使用同目录 .webp）
+dist/assets/enhanced/ningguang/textures/*.png

@@ -1,0 +1,103 @@
+{
+  "schema": 1,
+  "characterId": 0,
+  "appearance": "liuchao-body-trial",
+  "label": "琉潮-换装四试穿版",
+  "mesh": "mesh.json",
+  "complete": true,
+  "completeness": {
+    "bodyGeometry": true,
+    "headHairGeometry": true,
+    "eyes": true,
+    "faceGeometry": true,
+    "sourcePmxSkeleton": false,
+    "originalSourceGameSkeleton": false,
+    "scalpGeometry": true
+  },
+  "stats": {
+    "vertices": 41829,
+    "triangles": 59342,
+    "sourceBones": 434,
+    "bones": 30,
+    "dummies": 6,
+    "secondaryBones": 0,
+    "materials": 20,
+    "textures": 8
+  },
+  "retarget": {
+    "method": "Supplied swimsuit body, clothing and shoes on a source-length display rig. Liuchao head kept at its fitted height, with continuous neck skin and a separate fabric band.",
+    "provisional": true,
+    "hairPhysics": false,
+    "clothPhysics": false
+  },
+  "provenance": {
+    "sourceArchive": "assets/source/liuchao/琉潮.blend",
+    "limits": [
+      "Swimsuit surfaces retain the supplied diffuse colors. The neck band is newly fitted.",
+      "Hair and clothing follow bones; no secondary physics or expression morphs."
+    ],
+    "scalpSource": "assets/source/liuchao/琉潮-修复版.blend",
+    "outfitArchive": "assets/source/yuzuha-swimwear",
+    "baseAppearance": "liuchao",
+    "baseMeshSha256": "364ff77b9684bfc61c95b85183e7dd18597484cdcb61f0f41e968cd1ae781317",
+    "referenceAppearance": "liuchao-yuzuha",
+    "trial": true
+  },
+  "sourceFiles": [
+    {
+      "file": "Buffer/5144c409-Blend.buf",
+      "sha256": "1ba441239380a3c2f04bb8244f6c7a93482493527b12e6272ac9b7620031c5a9",
+      "bytes": 357664
+    },
+    {
+      "file": "Buffer/5144c409-Component1.buf",
+      "sha256": "6619e02f18d6e7314095463dac0de87dc1ac20262538c0f60e4192aa89ab9e5a",
+      "bytes": 157788
+    },
+    {
+      "file": "Buffer/5144c409-Position.buf",
+      "sha256": "7a430279e31f55b896857ef1f417c09f35f428d4bc50ad226077efa09c009b1a",
+      "bytes": 447080
+    },
+    {
+      "file": "Buffer/5144c409-Texcoord.buf",
+      "sha256": "963cc56ea557fc6907c135222f61986e90b3f4fe8a9813af317fda2c8e65327b",
+      "bytes": 223540
+    },
+    {
+      "file": "Buffer/73757570-Blend.buf",
+      "sha256": "5ee8ab0016b041f4bda77f094736fb6a31b691fc2fabe1f3f92451e65a2d9579",
+      "bytes": 320128
+    },
+    {
+      "file": "Buffer/73757570-Component1.buf",
+      "sha256": "d3fcd95bf91db6e287f0ae2de6cb1c3db596075c6aafb881e25eab91e2563ce6",
+      "bytes": 146244
+    },
+    {
+      "file": "Buffer/73757570-Position.buf",
+      "sha256": "1bf94ea91bbd5b7675d12eddbef63e8c568d727f380fd9885b5c418280fcd369",
+      "bytes": 400160
+    },
+    {
+      "file": "Buffer/73757570-Texcoord.buf",
+      "sha256": "c3a1a48a6f3800237082b4a38080de9e1cad53a56b0aebef2bab810fb92ef942",
+      "bytes": 200080
+    },
+    {
+      "file": "Texture/5144c409_1_1fabf669_Hash_DiffuseMap.dds",
+      "sha256": "a2b97dddfeb9cc960124388fa9f7b79c8683af3a28b25dbfc0a753550d862519",
+      "bytes": 8388756
+    },
+    {
+      "file": "Texture/7a504287_1_c9115930_Hash_DiffuseMap.dds",
+      "sha256": "a2b97dddfeb9cc960124388fa9f7b79c8683af3a28b25dbfc0a753550d862519",
+      "bytes": 8388756
+    },
+    {
+      "file": "yuzuha.ini",
+      "sha256": "fea592698a6bdcfe9d5747f1a78da9f67db5fbed4d912078eb8d92d170c03f3e",
+      "bytes": 11050
+    }
+  ]
+}

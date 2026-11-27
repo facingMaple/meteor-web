@@ -7,6 +7,8 @@ const details = Object.freeze({
   liuchao: { name: '琉潮', seal: '琉', shortLabel: '琉潮', title: '琉潮 · 原创角色', kind: 'pmx', note: '原创角色，保留源模型比例与主要饰物，适配《流星》动作。游戏版本精简了身体与饰物网格；头发、衣物与表情暂未接入独立物理和控制。' },
   'liuchao-mint': { name: '琉潮-换装二', seal: '琉', shortLabel: '琉潮-换装二', title: '琉潮-换装二', kind: 'pmx', note: '修复版琉潮换上薇斯纳薄荷色泳装。包含镂空荷叶边、短裙与凉鞋，沿用《流星》动作。' },
   'liuchao-wedding': { name: '琉潮-换装三', seal: '琉', shortLabel: '琉潮-换装三', title: '琉潮-换装三', kind: 'pmx', note: '修复版琉潮换上 Odette 白色婚纱，包含头冠、头纱、裙摆和配饰，沿用《流星》动作。' },
+  'liuchao-yuzuha': { name: '琉潮-换装四', seal: '琉', shortLabel: '琉潮-换装四', title: '琉潮-换装四', kind: 'pmx', note: '修复版琉潮换上浮波柚叶的蓝白泳装，搭配荷叶袖、短裙和厚底凉鞋，沿用《流星》动作。' },
+  'liuchao-body-trial': { name: '琉潮-换装四试穿版', seal: '琉', shortLabel: '换装四试穿', title: '琉潮-换装四试穿版', kind: 'pmx', note: '保留琉潮的五官和发型，调整下颌、颈线与面部肤色。身体、肤色贴图与厚底凉鞋来自同一套泳装模型。' },
   hutao: { name: 'YS-胡桃', seal: '胡', shortLabel: 'YS-胡桃', title: 'YS-胡桃 · 模型适配', kind: 'pmx', note: '采用本地完整「胡桃喵1.0.pmx」及配套贴图。资料署名 miHoYo／观海，目录署名摸鱼大水怪。适配原版骨架；发尾已加入独立弹簧骨骼、惯性和基础身体碰撞；衣摆与表情尚未接入原模型物理和控制。' },
   doubao: { name: '豆包', seal: '豆', shortLabel: '豆包', title: '豆包 · 模型适配', kind: 'pmx', note: '保留原模型身材比例、完整网格和原4K贴图，适配《流星》动作与武器，头发轻微跟随；可查看原模型姿态。版权归属《豆包》；建模：sdn1111，绑定：鹿铃。衣物物理和面部表情尚未接入。' },
   springfield: { name: '春田', seal: '春', shortLabel: '春田', title: '春田 · 泳装P3', kind: 'pmx', note: '保留原模型身材比例、网格与贴图，沿用《流星》动作，刘海和长发轻微跟随；可查看原模型姿态。模型：Sunborn Network Technology；绑定修正：DesmondChan／摸鱼的可露凯。衣物物理与表情尚未接入。' },

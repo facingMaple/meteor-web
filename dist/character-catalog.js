@@ -4,6 +4,8 @@ export const NATIVE_APPEARANCES=Object.freeze({
   original:Object.freeze({id:'original',label:'原版人物',characterId:null}),
   liuchao:Object.freeze({id:'liuchao',label:'琉潮 · 原创角色',characterId:0,assetPath:'./assets/enhanced/liuchao/'}),
   'liuchao-wedding':Object.freeze({id:'liuchao-wedding',label:'琉潮-换装三',characterId:0,assetPath:'./assets/enhanced/liuchao-wedding/'}),
+  'liuchao-yuzuha':Object.freeze({id:'liuchao-yuzuha',label:'琉潮-换装四',characterId:0,assetPath:'./assets/enhanced/liuchao-yuzuha/'}),
+  'liuchao-body-trial':Object.freeze({id:'liuchao-body-trial',label:'琉潮-换装四试穿版',characterId:0,assetPath:'./assets/enhanced/liuchao-body-trial/',assetRevision:'collar-v4',trial:true}),
   hutao:Object.freeze({id:'hutao',label:'YS-胡桃 · 模型适配',characterId:0,assetPath:'./assets/enhanced/hutao/'}),
   doubao:Object.freeze({id:'doubao',label:'豆包 · 模型适配',characterId:0,assetPath:'./assets/enhanced/doubao/'}),
   springfield:Object.freeze({id:'springfield',label:'春田 · 泳装P3',characterId:0,assetPath:'./assets/enhanced/springfield/'}),

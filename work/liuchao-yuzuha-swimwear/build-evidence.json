@@ -1,0 +1,325 @@
+{
+  "parts": [
+    {
+      "name": "官方面部 · 眼睛与表情形态键",
+      "sourceVertices": 2081,
+      "runtimeVertices": 2081,
+      "triangles": 3096
+    },
+    {
+      "name": "左手 · 官方网格与手指权重",
+      "sourceVertices": 866,
+      "runtimeVertices": 866,
+      "triangles": 1289
+    },
+    {
+      "name": "右手 · 对侧手指权重",
+      "sourceVertices": 866,
+      "runtimeVertices": 866,
+      "triangles": 1289
+    },
+    {
+      "name": "身体 · 连续曲面",
+      "sourceVertices": 88878,
+      "runtimeVertices": 38132,
+      "triangles": 76260
+    },
+    {
+      "name": "官方短发 · 镜像刘海",
+      "sourceVertices": 3888,
+      "runtimeVertices": 3888,
+      "triangles": 4498
+    },
+    {
+      "name": "低束马尾 · 发束",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.001",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.002",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.003",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.004",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.005",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.006",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.007",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.008",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.009",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "低束马尾 · 发束.010",
+      "sourceVertices": 48,
+      "runtimeVertices": 706,
+      "triangles": 1408
+    },
+    {
+      "name": "鬓边青色发梢",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.001",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.002",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.003",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.004",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "鬓边青色发梢.005",
+      "sourceVertices": 32,
+      "runtimeVertices": 450,
+      "triangles": 896
+    },
+    {
+      "name": "马尾 · 淡金束环",
+      "sourceVertices": null,
+      "runtimeVertices": 1536,
+      "triangles": 3072
+    },
+    {
+      "name": "马尾 · 青色结带",
+      "sourceVertices": null,
+      "runtimeVertices": 104,
+      "triangles": 192
+    },
+    {
+      "name": "马尾 · 垂带",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "马尾 · 青色结带.001",
+      "sourceVertices": null,
+      "runtimeVertices": 104,
+      "triangles": 192
+    },
+    {
+      "name": "马尾 · 垂带.001",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "发饰 · 海晶羽片",
+      "sourceVertices": 6,
+      "runtimeVertices": 30,
+      "triangles": 56
+    },
+    {
+      "name": "发饰 · 细金叶脉",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "发饰 · 海晶羽片.001",
+      "sourceVertices": 6,
+      "runtimeVertices": 30,
+      "triangles": 56
+    },
+    {
+      "name": "发饰 · 细金叶脉.001",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "发饰 · 海晶羽片.002",
+      "sourceVertices": 6,
+      "runtimeVertices": 30,
+      "triangles": 56
+    },
+    {
+      "name": "发饰 · 细金叶脉.002",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "发饰 · 金托",
+      "sourceVertices": 422,
+      "runtimeVertices": 422,
+      "triangles": 840
+    },
+    {
+      "name": "耳饰 · 垂链",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "耳饰 · 海蓝坠饰",
+      "sourceVertices": 6,
+      "runtimeVertices": 30,
+      "triangles": 56
+    },
+    {
+      "name": "耳饰 · 垂链.001",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "耳饰 · 海蓝坠饰.001",
+      "sourceVertices": 6,
+      "runtimeVertices": 30,
+      "triangles": 56
+    },
+    {
+      "name": "耳饰 · 垂链.002",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "耳饰 · 海蓝坠饰.002",
+      "sourceVertices": 6,
+      "runtimeVertices": 30,
+      "triangles": 56
+    },
+    {
+      "name": "耳饰 · 垂链.003",
+      "sourceVertices": null,
+      "runtimeVertices": 72,
+      "triangles": 128
+    },
+    {
+      "name": "耳饰 · 海蓝坠饰.003",
+      "sourceVertices": 6,
+      "runtimeVertices": 30,
+      "triangles": 56
+    },
+    {
+      "name": "后脑 · 原始头皮",
+      "sourceVertices": 468,
+      "runtimeVertices": 2610,
+      "triangles": 870
+    },
+    {
+      "name": "泳装上衣与领饰",
+      "runtimeVertices": 3844,
+      "triangles": 4027
+    },
+    {
+      "name": "荷叶袖与袖扣",
+      "runtimeVertices": 3397,
+      "triangles": 3768
+    },
+    {
+      "name": "裙摆与腰饰",
+      "runtimeVertices": 2107,
+      "triangles": 2387
+    },
+    {
+      "name": "左厚底凉鞋",
+      "runtimeVertices": 1308,
+      "triangles": 1232
+    },
+    {
+      "name": "右厚底凉鞋",
+      "runtimeVertices": 1304,
+      "triangles": 1232
+    },
+    {
+      "name": "右腿饰",
+      "runtimeVertices": 1066,
+      "triangles": 856
+    }
+  ],
+  "sourceDraws": [
+    {
+      "buffer": "5144c409",
+      "part": "泳装上衣与领饰",
+      "triangles": 4027
+    },
+    {
+      "buffer": "5144c409",
+      "part": "荷叶袖与袖扣",
+      "triangles": 3768
+    },
+    {
+      "buffer": "5144c409",
+      "part": "裙摆与腰饰",
+      "triangles": 2387
+    },
+    {
+      "buffer": "73757570",
+      "part": "左厚底凉鞋",
+      "triangles": 1232
+    },
+    {
+      "buffer": "73757570",
+      "part": "右厚底凉鞋",
+      "triangles": 1232
+    },
+    {
+      "buffer": "73757570",
+      "part": "右腿饰",
+      "triangles": 856
+    }
+  ],
+  "meshSha256": "baaf51d69d20d374cd91744a76cafca23cc28ce8bb2d93c47786c2a26589a839"
+}

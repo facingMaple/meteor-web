@@ -6,7 +6,19 @@ __pycache__/
 *.tar.gz
 artifacts/
 assets/source/
+/assets/model-previews/
 tools/
+# Keep previews and screenshots generated in work/ local.
+/work/**/*.[pP][nN][gG]
+/work/**/*.[jJ][pP][gG]
+/work/**/*.[jJ][pP][eE][gG]
+/work/**/*.[wW][eE][bB][pP]
+/work/**/*.[gG][iI][fF]
+/work/**/*.[bB][mM][pP]
+/work/**/*.[aA][vV][iI][fF]
+/work/**/*.[hH][eE][iI][cC]
+/work/**/*.[tT][iI][fF]
+/work/**/*.[tT][iI][fF][fF]
 work/meteor-original/ghidra-project/
 work/meteor-original/*.log
 work/meteor-original/upload-batches.json

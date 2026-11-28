@@ -8,7 +8,7 @@ Blender 中制作了石板庭院、铜纹嵌线、山门、后殿、侧亭、树
 
 - `栖云古庭.blend`：可编辑工程，贴图已打包。
 - `栖云古庭.glb`：静态几何、颜色和材质交换文件。动态水面、风、天空与雾由运行时实现。
-- `overview-0001.png`：Blender 场景总览；游戏画面见实战截图。
+- Blender 场景总览保存在本地 `assets/model-previews/qiyun-courtyard/overview-0001.png`。游戏画面见实战截图。
 - `../../dist/assets/enhanced/maps/qiyun/`：随游戏分发的几何二进制、材质清单、石材贴图和地图缩略图。
 - `../../dist/qiyun-courtyard.js`：资源读取、材质、天空、水面和风。
 - `stone-texture-prompt.txt`：内置 image_gen 的最终石材提示词。生成结果复制为运行目录内的 `limestone.png`，运行不依赖工作区外的文件。
